@@ -465,7 +465,7 @@ def admin():
         feedback_count = cursor.fetchone()[0]
         
         # 2. Top Feature Requests
-        cursor.execute("SELECT feature, priority, COUNT(*) as cnt FROM feature_requests GROUP BY feature ORDER BY cnt DESC LIMIT 5")
+        cursor.execute("SELECT feature, MAX(priority) as priority, COUNT(*) as cnt FROM feature_requests GROUP BY feature ORDER BY cnt DESC LIMIT 5")
         feature_rows = cursor.fetchall()
         
         # 3. Active Licenses List
