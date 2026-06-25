@@ -1,0 +1,18 @@
+import sqlite3
+conn = sqlite3.connect("server_activations.db")
+cursor = conn.cursor()
+cursor.execute("SELECT license_key, name, email, company, country, photography_type, status, activated_at, expires_at FROM licenses WHERE status='active'")
+active_keys = cursor.fetchall()
+print(f"Total active licenses: {len(active_keys)}")
+for r in active_keys:
+    print("-" * 50)
+    print(f"Key:              {r[0]}")
+    print(f"Name:             {r[1]}")
+    print(f"Email:            {r[2]}")
+    print(f"Company:          {r[3]}")
+    print(f"Country:          {r[4]}")
+    print(f"Photography Type: {r[5]}")
+    print(f"Status:           {r[6]}")
+    print(f"Activated At:     {r[7]}")
+    print(f"Expires At:       {r[8]}")
+conn.close()
