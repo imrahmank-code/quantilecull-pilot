@@ -1,0 +1,53 @@
+# Ignore virtual environments and build cache
+.venv/
+.venv_new/
+build/
+dist/
+release/
+archive/
+__pycache__/
+*.pyc
+.antigravity_brain/
+culling_project_brain_backup/
+Logs/
+models/
+
+# Ignore Chrome profile and backup folders inside scratch/
+scratch/chrome_profile/
+scratch/backup_consolidation/
+
+# Ignore databases, telemetry, and worksheets
+*.db
+*.xlsx
+*.log
+*.zip
+*.spec
+*.iss
+requirements.txt.bak
+
+# Ignore test datasets and client validation reports
+validation_datasets/
+WORKSPACE_CLEANUP_REPORT.md
+V1.0_BUILD_REPORT.md
+V1.0_RELEASE_NOTES.md
+V1.1_BUILD_REPORT.md
+V1.1_RELEASE_NOTES.md
+PILOT_RELEASE_REPORT.md
+task.md
+walkthrough.md
+implementation_plan.md
+README.md
+
+# Ignore desktop client specific code
+app.py
+image_analyzer.py
+telemetry.py
+recovery.py
+nuitka_build.py
+index.html
+brand/
+docs/
+tests/
+static/
+scripts/run_production_exports.py
+AGY_WORKSPACE.json
