@@ -183,6 +183,10 @@ def init_db():
                 conn.execute("INSERT OR IGNORE INTO licenses (license_key, status) VALUES (?, ?)", (k, 'unactivated'))
             
             print(f"[Server DB Init] Seeded {len(seeded_keys)} pilot licenses successfully.")
+        
+        # Always ensure specific test/pilot keys exist
+        conn.execute("INSERT OR IGNORE INTO licenses (license_key, status) VALUES (?, ?)", ("QC-TRIAL-TEST-1234", 'unactivated'))
+        conn.execute("INSERT OR IGNORE INTO licenses (license_key, status) VALUES (?, ?)", ("QC-PILOT-001", 'unactivated'))
     conn.close()
 
 init_db()
