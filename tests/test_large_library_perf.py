@@ -10,7 +10,8 @@ import tests.profile_large_library as profiler
 
 class TestLargeLibraryPerf(unittest.TestCase):
     def test_large_library_similarity_speed(self):
-        duration = profiler.run_scaling_benchmark()
+        results = profiler.run_scaling_benchmark()
+        duration = results.get("cosine_search_time") if isinstance(results, dict) else results
         # Cosine search over 100 queries against 10,000 centroids must take < 1.0 second on modern CPUs
         self.assertLess(duration, 1.0)
 
