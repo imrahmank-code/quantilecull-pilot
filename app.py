@@ -729,7 +729,7 @@ class WebviewApi:
         return model_download_status
 
     def get_recovery_checkpoint(self):
-        chk = recovery_manager.load_checkpoint()
+        chk = resume_engine.load_active_checkpoint()
         if chk:
             return {
                 "job_id": chk["job_id"],
