@@ -9,4 +9,4 @@ Welcome to the Release Candidate 1 distribution package.
 * **Storytelling & Event Intelligence**: Event timeline segmentation.
 
 ## Known Limitations
-* **Microsoft SmartScreen Warning**: This Release Candidate may display a Windows SmartScreen warning during installation if the installer is unsigned or has not yet established reputation. Internal testers may select **More info** ➔ **Run anyway** to continue installation. This does not indicate that the installer is malicious; it reflects Windows trust policies for new applications.
+* **Microsoft SmartScreen Warning**: This Release Candidate may display a Windows SmartScreen warning during installation if the installer is unsigned or has not yet established reputation. Internal testers may select **More info** ➔ **Run anyway** to continue installation. This does not indicate that the installer is malicious; it reflects Windows trust policies for new applications. SmartScreen reputation is controlled by Microsoft using multiple undisclosed trust signals.

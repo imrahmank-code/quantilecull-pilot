@@ -1,0 +1,10 @@
+{
+  "verdict": "PASS",
+  "checks": {
+    "initialization": "PASS",
+    "raw_decoding": "PASS",
+    "face_clustering": "PASS",
+    "blink_recovery": "PASS",
+    "export": "PASS"
+  }
+}
