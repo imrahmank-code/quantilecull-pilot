@@ -104,6 +104,7 @@ def _set_cached_analysis(path, mtime, sha256, phash, ratio, timestamp, metrics):
         
         cache_engine.set_cached_item(path, mtime, xmp_mtime, sha256, phash, ratio, timestamp, metrics_copy)
         cache_engine.set_face_embeddings(path, faces)
+        cache_engine.incremental_cluster_update(path, faces)
     except Exception as e:
         print(f"Failed to write cache to engine: {e}")
 

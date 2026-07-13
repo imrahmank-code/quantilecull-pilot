@@ -1846,14 +1846,19 @@ function renderFaceBoxes(photo, overlayEl) {
             const hasEmb = face.embedding && face.embedding.length > 0 ? '✓' : '✗';
             const qSharp = face.quality ? face.quality.sharpness : face.sharpness;
             const qExpos = face.quality ? face.quality.exposure : (face.face_exposure || '—');
+            
+            const clusterId = face.cluster_id !== undefined && face.cluster_id !== null ? face.cluster_id : 'None';
+            const matchScore = face.matching_score !== undefined && face.matching_score !== null ? (face.matching_score * 100).toFixed(1) : '—';
+            const clusterSize = face.cluster_size !== undefined && face.cluster_size !== null ? face.cluster_size : 0;
+            const identityState = face.identity_state || 'unclustered';
 
             // Semi-translucent background box
             const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             bgRect.setAttribute('x', face.x);
             bgRect.setAttribute('y', face.y + face.h + 2);
             bgRect.setAttribute('width', face.w);
-            bgRect.setAttribute('height', smallFontSize * 5.5);
-            bgRect.setAttribute('fill', 'rgba(0,0,0,0.7)');
+            bgRect.setAttribute('height', smallFontSize * 9.0);
+            bgRect.setAttribute('fill', 'rgba(0,0,0,0.78)');
             bgRect.setAttribute('rx', '4');
             svg.appendChild(bgRect);
 
@@ -1861,7 +1866,10 @@ function renderFaceBoxes(photo, overlayEl) {
                 `Conf: ${conf}%  Emb: ${hasEmb}`,
                 `Roll: ${roll}° Pitch: ${pitch}°`,
                 `Yaw: ${yaw}°`,
-                `Sharp: ${qSharp}  Exp: ${qExpos}`
+                `Sharp: ${qSharp}  Exp: ${qExpos}`,
+                `Cluster ID: ${clusterId}`,
+                `Match: ${matchScore}%  Size: ${clusterSize}`,
+                `State: ${identityState}`
             ];
             lines.forEach((line, li) => {
                 const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
