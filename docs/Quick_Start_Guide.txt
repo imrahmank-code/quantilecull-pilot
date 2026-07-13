@@ -1,0 +1,64 @@
+========================================================================
+             QuantileCull V1.1 Pilot - Quick Start Guide
+========================================================================
+
+Welcome to the QuantileCull V1.1 Pilot! This quick start guide will help
+you get up and running on Windows 10 or 11 in less than 2 minutes.
+
+------------------------------------------------------------------------
+1. INSTALLATION & SETUP (PORTABLE RUN)
+------------------------------------------------------------------------
+Since this is a pilot validation build, it is packaged as a portable
+executable. No complex installation is required.
+
+Steps:
+1. Extract the contents of this ZIP file (QuantileCull_V1.1_Portable.zip)
+   to a folder on your local drive (e.g., C:\QuantileCull or E:\Apps).
+2. Double-click "QuantileCull_V1.1.exe" to launch the application.
+
+*Note: On first launch, Windows Defender SmartScreen might display a
+warning ("Windows protected your PC") because this is a private pilot
+build. Click "More info" and then click "Run anyway".
+
+------------------------------------------------------------------------
+2. REGISTRATION & ACTIVATION
+------------------------------------------------------------------------
+Upon first launch, a dark registration and activation overlay will appear:
+1. Enter your Full Name and Email Address.
+2. Enter your Organization / Studio name and Country (optional).
+3. Select your main Photography Type (e.g., Event, Wedding, Sports).
+4. Enter your unique 12-character Activation License Key provided in your
+   pilot email (format: QC-XXXX-XXXX-XXXX).
+5. Leave the Advanced Server Endpoint as default (or set it to the URL
+   provided by the administrator).
+6. Click "Activate Now". The app will contact the activation server,
+   install the local license key, and unlock immediately.
+
+------------------------------------------------------------------------
+3. PHOTO CULLING IN 3 EASY STEPS
+------------------------------------------------------------------------
+1. Select Folder: Click "Select Directory" and browse to your shoot folder
+   containing RAW or JPEG images.
+2. Adjust Parameters: Set the duplicate similarity threshold (default: 85%)
+   and specify the top N% selection fraction if you want aggressive culling.
+3. Run Culling Scan: Click "Analyze Directory". The offline AI engine will
+   automatically detect exact duplicates, group similar shots, evaluate
+   sharpness, and penalize closed eyes/blinks.
+4. Export: Review recommendations in the dual-grid or split-compare viewer,
+   tweak selection flags, and click "Export" to copy best shots to a 
+   subfolder or backup local duplicates.
+
+------------------------------------------------------------------------
+4. PILOT FEEDBACK & TELEMETRY
+------------------------------------------------------------------------
+- Feedback Button: Click the "Feedback" button in the app header at any time
+  to rate your satisfaction and submit comments.
+- Request Feature: Click the "Request Feature" button next to it to suggest
+  new workflows or features directly to our product tracker.
+- Anonymous Telemetry: The app silently logs culling counts and run times on
+  scan completion. No image data or paths are ever transmitted.
+- Crash Reports: If the app closes unexpectedly, it will ask for your consent
+  on next boot to upload a diagnostic stack trace.
+
+Need help? Contact support at support@quantilecull.com
+========================================================================
