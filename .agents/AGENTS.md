@@ -103,4 +103,24 @@ Before performing any file operation, the AI assistant MUST:
 
 The external HDD is the authoritative source of truth for all Antigravity projects.
 
+---
+
+## 10. Unified Installer Build & Deployment Automation (Rule 10)
+* **Single Source of Truth**: The latest compiled installer executable is always generated at:
+  `E:\Antigravity Projects\Photo Cleaner App\dist\QuantileCull_Setup.exe`
+* **Build Automation Script**: Always use the PowerShell build script:
+  `E:\Antigravity Projects\Photo Cleaner App\build_installer.ps1`
+  to compile the PyInstaller app executable and build the Inno Setup installer package in one command.
+* **Build Execution Steps**:
+  1. Open PowerShell inside the `Photo Cleaner App` directory.
+  2. Run the script:
+     ```powershell
+     .\build_installer.ps1
+     ```
+  3. The script will automatically locate Inno Setup 6, clean intermediate directories, compile the binary, and build the final `QuantileCull_Setup.exe`.
+* **Deployment/Distribution**:
+  - The website's dynamic redirect (`api/download.js`) points to Filebin: `https://filebin.net/quantilecull-v11/QuantileCull_Setup.zip`.
+  - When changes are made, zip the new setup file, upload it to the Filebin path, and redeploy to Vercel via `npx vercel --prod --yes`.
+
+
 

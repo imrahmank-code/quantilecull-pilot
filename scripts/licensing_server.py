@@ -183,6 +183,10 @@ def init_db():
                 conn.execute("INSERT OR IGNORE INTO licenses (license_key, status) VALUES (?, ?)", (k, 'unactivated'))
             
             print(f"[Server DB Init] Seeded {len(seeded_keys)} pilot licenses successfully.")
+        
+        # Always ensure specific test/pilot keys exist
+        conn.execute("INSERT OR IGNORE INTO licenses (license_key, status) VALUES (?, ?)", ("QC-TRIAL-TEST-1234", 'unactivated'))
+        conn.execute("INSERT OR IGNORE INTO licenses (license_key, status) VALUES (?, ?)", ("QC-PILOT-001", 'unactivated'))
     conn.close()
 
 init_db()
@@ -465,7 +469,7 @@ def admin():
         feedback_count = cursor.fetchone()[0]
         
         # 2. Top Feature Requests
-        cursor.execute("SELECT feature, priority, COUNT(*) as cnt FROM feature_requests GROUP BY feature ORDER BY cnt DESC LIMIT 5")
+        cursor.execute("SELECT feature, MAX(priority) as priority, COUNT(*) as cnt FROM feature_requests GROUP BY feature ORDER BY cnt DESC LIMIT 5")
         feature_rows = cursor.fetchall()
         
         # 3. Active Licenses List
