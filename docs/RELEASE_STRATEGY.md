@@ -50,10 +50,18 @@ QuantileCull adheres to **Semantic Versioning 2.0.0 (SemVer)**:
   * **MINOR**: New backward-compatible features (e.g., RAW photo support, Lightroom sync).
   * **PATCH**: Backward-compatible bug/security hotfixes.
 
+### Semantic Release Lifecycle Stages
+We distinguish build readiness using the following lifecycle formats:
+* **Experimental / Beta**: `vMAJOR.MINOR.0-betaN` (e.g., `v1.2.0-beta1`, `v1.2.0-beta2`). Outlines active testing builds on the experimental branch.
+* **Release Candidate**: `vMAJOR.MINOR.0-rcN` (e.g., `v1.2.0-rc1`). Feature-complete candidate builds entering QA regression checking.
+* **Stable Production Release**: `vMAJOR.MINOR.0` (e.g., `v1.2.0`). Production builds compiled and ready for rollout.
+* **Hotfixes & Patches**: `vMAJOR.MINOR.PATCH` (e.g., `v1.1.1`, `v1.1.2`). Minor bug fixes and security hotfixes applied to production release lines.
+
 ### Git Tagging Convention
 * Releases are tagged on the target stable branch.
-* Production tag format: **`vX.Y.Z-stable`** (e.g., `v1.1.0-stable`).
+* Production tag format: **`vX.Y.Z-stable`** (e.g., `v1.1.0-stable`, `v1.2.0-stable`).
 * Hotfix tag format: **`vX.Y.Z-hotfix`** (e.g., `v1.1.1-hotfix`).
+* Candidate/beta tag format: **`vX.Y.Z-betaN`** or **`vX.Y.Z-rcN`** (e.g., `v1.2.0-rc1`).
 
 ---
 
