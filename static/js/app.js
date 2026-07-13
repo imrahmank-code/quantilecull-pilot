@@ -1853,13 +1853,21 @@ function renderFaceBoxes(photo, overlayEl) {
             const identityState = face.identity_state || 'unclustered';
             const personId = face.person_id !== undefined && face.person_id !== null ? face.person_id : 'None';
             const personName = face.person_name || 'Unresolved';
+            
+            const smileVal = face.smile_confidence !== undefined ? face.smile_confidence.toFixed(1) : '—';
+            const occlVal = face.occlusion_score !== undefined ? face.occlusion_score.toFixed(1) : '—';
+            const lightVal = face.lighting_quality !== undefined ? face.lighting_quality.toFixed(1) : '—';
+            const exprVal = face.expression_score !== undefined ? face.expression_score.toFixed(1) : '—';
+            const poseQVal = face.head_pose_score !== undefined ? face.head_pose_score.toFixed(1) : '—';
+            const faceQVal = face.face_quality_score !== undefined ? face.face_quality_score.toFixed(1) : '—';
+            const lookCam = face.looking_at_camera ? 'Yes' : 'No';
 
             // Semi-translucent background box
             const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             bgRect.setAttribute('x', face.x);
             bgRect.setAttribute('y', face.y + face.h + 2);
             bgRect.setAttribute('width', face.w);
-            bgRect.setAttribute('height', smallFontSize * 10.5);
+            bgRect.setAttribute('height', smallFontSize * 14.5);
             bgRect.setAttribute('fill', 'rgba(0,0,0,0.78)');
             bgRect.setAttribute('rx', '4');
             svg.appendChild(bgRect);
@@ -1872,7 +1880,12 @@ function renderFaceBoxes(photo, overlayEl) {
                 `Cluster ID: ${clusterId}`,
                 `Match: ${matchScore}%  Size: ${clusterSize}`,
                 `State: ${identityState}`,
-                `Person: ${personName} (#${personId})`
+                `Person: ${personName} (#${personId})`,
+                `Smile: ${smileVal}%  Occl: ${occlVal}%`,
+                `Lighting: ${lightVal}%`,
+                `Expr: ${exprVal}%  PoseQ: ${poseQVal}%`,
+                `Look Cam: ${lookCam}`,
+                `Face Quality: ${faceQVal}%`
             ];
             lines.forEach((line, li) => {
                 const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');

@@ -1287,10 +1287,24 @@ def _analyze_eyes_mediapipe(img_rgb):
         left_eye_indices = [33, 160, 158, 133, 153, 144, 159, 145]
         right_eye_indices = [362, 385, 387, 263, 373, 380, 386, 374]
         
+        corners_y = (pts[61, 1] + pts[291, 1]) / 2.0
+        center_y = (pts[0, 1] + pts[17, 1]) / 2.0
+        pull = center_y - corners_y
+        m_width = np.linalg.norm(pts[61] - pts[291])
+        ratio = pull / m_width if m_width > 0 else 0.0
+        smile_confidence = min(100.0, max(0.0, (ratio + 0.02) / 0.12 * 100.0))
+
+        border_threshold_w = 0.02 * w
+        border_threshold_h = 0.02 * h
+        on_border = any(pt[0] < border_threshold_w or pt[0] > w - border_threshold_w or pt[1] < border_threshold_h or pt[1] > h - border_threshold_h for pt in pts)
+        occlusion_score = 100.0 if on_border else 0.0
+
         faces_info.append({
             "bbox": (x_min, y_min, x_max - x_min, y_max - y_min),
             "is_blink": is_blink,
             "eye_openness": float(round(eye_openness, 1)),
+            "smile_confidence": float(round(smile_confidence, 1)),
+            "occlusion_score": float(round(occlusion_score, 1)),
             "left_ear": float(left_ear),
             "right_ear": float(right_ear),
             "left_eye_landmarks": pts[left_eye_indices].tolist(),

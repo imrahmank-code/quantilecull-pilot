@@ -5,13 +5,8 @@ from typing import List, Dict
 
 def detect_faces(image_data: np.ndarray) -> List[Dict]:
     """
-    Detects faces in the image data.
-    Returns a list of face dictionaries, each containing:
-      - bbox: [x, y, w, h]
-      - confidence: float
-      - landmarks: dict of key points (left_eye, right_eye, nose_tip, mouth_center)
-      - orientation: dict of roll, pitch, yaw
-      - quality: dict of sharpness, exposure
+    Detects faces in the image data and performs Expression Intelligence scoring.
+    Returns a list of face dictionaries.
     """
     import image_analyzer
     
@@ -61,10 +56,35 @@ def detect_faces(image_data: np.ndarray) -> List[Dict]:
             hsv = cv2.cvtColor(image_data, cv2.COLOR_RGB2HSV)
             face_roi_hsv = hsv[y1:y2, x1:x2]
             face_exposure = 80.0
+            lighting_quality = 80.0
             if face_roi_hsv.size > 0:
                 mean_v = np.mean(face_roi_hsv[:, :, 2])
+                std_v = np.std(face_roi_hsv[:, :, 2])
                 face_exposure = max(0.0, 100.0 - abs(mean_v - 130.0) * (100.0 / 120.0))
+                mean_factor = max(0.0, 1.0 - abs(mean_v - 130.0) / 110.0)
+                contrast_factor = min(1.0, std_v / 40.0)
+                lighting_quality = float(round(mean_factor * contrast_factor * 100.0, 1))
                 
+            eye_openness = mp_face.get("eye_openness", 90.0)
+            blink_probability = float(round(100.0 - eye_openness, 1))
+            smile_confidence = mp_face.get("smile_confidence", 50.0)
+            occlusion_score = mp_face.get("occlusion_score", 0.0)
+            expression_score = float(round(0.4 * eye_openness + 0.6 * smile_confidence, 1))
+            
+            looking_at_camera = abs(yaw) < 15.0 and abs(pitch) < 15.0
+            
+            head_pose_score = float(round(max(0.0, 100.0 - (abs(yaw) + abs(pitch) + abs(roll)) * 1.2), 1))
+            
+            face_quality_score = float(round(
+                0.3 * face_sharpness +
+                0.2 * eye_openness +
+                0.15 * smile_confidence +
+                0.15 * head_pose_score +
+                0.1 * lighting_quality +
+                0.1 * (100.0 - occlusion_score),
+                1
+            ))
+            
             faces.append({
                 "bbox": [int(x), int(y), int(fw), int(fh)],
                 "confidence": float(mp_face.get("confidence", 0.95)),
@@ -79,10 +99,28 @@ def detect_faces(image_data: np.ndarray) -> List[Dict]:
                     "pitch": float(round(pitch, 1)),
                     "yaw": float(round(yaw, 1))
                 },
+                "subject_orientation": {
+                    "roll": float(round(roll, 1)),
+                    "pitch": float(round(pitch, 1)),
+                    "yaw": float(round(yaw, 1))
+                },
                 "quality": {
                     "sharpness": float(face_sharpness),
                     "exposure": float(round(face_exposure, 1))
-                }
+                },
+                "eye_openness": float(round(eye_openness, 1)),
+                "blink_probability": blink_probability,
+                "smile_confidence": float(round(smile_confidence, 1)),
+                "face_sharpness": float(face_sharpness),
+                "occlusion_score": float(round(occlusion_score, 1)),
+                "lighting_quality": lighting_quality,
+                "expression_score": expression_score,
+                "expression_confidence": expression_score,
+                "looking_at_camera": looking_at_camera,
+                "looking_toward_camera": looking_at_camera,
+                "head_pose_score": head_pose_score,
+                "head_pose_quality": head_pose_score,
+                "face_quality_score": face_quality_score
             })
             
     else:
@@ -108,10 +146,33 @@ def detect_faces(image_data: np.ndarray) -> List[Dict]:
             hsv = cv2.cvtColor(image_data, cv2.COLOR_RGB2HSV)
             face_roi_hsv = hsv[y1:y2, x1:x2]
             face_exposure = 80.0
+            lighting_quality = 80.0
             if face_roi_hsv.size > 0:
                 mean_v = np.mean(face_roi_hsv[:, :, 2])
+                std_v = np.std(face_roi_hsv[:, :, 2])
                 face_exposure = max(0.0, 100.0 - abs(mean_v - 130.0) * (100.0 / 120.0))
+                mean_factor = max(0.0, 1.0 - abs(mean_v - 130.0) / 110.0)
+                contrast_factor = min(1.0, std_v / 40.0)
+                lighting_quality = float(round(mean_factor * contrast_factor * 100.0, 1))
                 
+            eye_openness = 80.0
+            blink_probability = 20.0
+            smile_confidence = 50.0
+            occlusion_score = 0.0
+            expression_score = 62.0
+            looking_at_camera = True
+            head_pose_score = 80.0
+            
+            face_quality_score = float(round(
+                0.3 * face_sharpness +
+                0.2 * eye_openness +
+                0.15 * smile_confidence +
+                0.15 * head_pose_score +
+                0.1 * lighting_quality +
+                0.1 * (100.0 - occlusion_score),
+                1
+            ))
+            
             faces.append({
                 "bbox": [int(x), int(y), int(fw), int(fh)],
                 "confidence": float(conf),
@@ -126,10 +187,28 @@ def detect_faces(image_data: np.ndarray) -> List[Dict]:
                     "pitch": 0.0,
                     "yaw": 0.0
                 },
+                "subject_orientation": {
+                    "roll": 0.0,
+                    "pitch": 0.0,
+                    "yaw": 0.0
+                },
                 "quality": {
                     "sharpness": float(face_sharpness),
                     "exposure": float(round(face_exposure, 1))
-                }
+                },
+                "eye_openness": eye_openness,
+                "blink_probability": blink_probability,
+                "smile_confidence": smile_confidence,
+                "face_sharpness": float(face_sharpness),
+                "occlusion_score": occlusion_score,
+                "lighting_quality": lighting_quality,
+                "expression_score": expression_score,
+                "expression_confidence": expression_score,
+                "looking_at_camera": looking_at_camera,
+                "looking_toward_camera": looking_at_camera,
+                "head_pose_score": head_pose_score,
+                "head_pose_quality": head_pose_score,
+                "face_quality_score": face_quality_score
             })
             
     return faces
