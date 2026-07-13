@@ -550,7 +550,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     
     # Write local crash.json for pilot crash reporting
     crash_data = {
-        "app_version": "1.1",
+        "app_version": "1.2.0-RC1",
         "error": str(exc_value),
         "stacktrace": err_msg,
         "machine_hash": get_machine_fingerprint(),
@@ -1283,7 +1283,7 @@ class WebviewApi:
             server_url = license_manager._get_db_value("server_url", "https://quantilecull.com/api")
             payload = {
                 "machine_id": get_machine_fingerprint(),
-                "app_version": "1.1",
+                "app_version": "1.2.0-RC1",
                 "error": error,
                 "stacktrace": stacktrace
             }
