@@ -1,0 +1,48 @@
+{
+  "verdict": "PASS",
+  "hardware_profile": {
+    "os": "Windows",
+    "os_release": "10",
+    "cpu": "Intel64 Family 6 Model 158 Stepping 9, GenuineIntel",
+    "threads": 8,
+    "ram": "32 GB",
+    "detected_tier": "Tier B",
+    "factor": 1.3
+  },
+  "validation_results": [
+    {
+      "metric": "Metadata Matrix",
+      "status": "PASS"
+    },
+    {
+      "metric": "Clustering Validation",
+      "status": "PASS"
+    },
+    {
+      "metric": "Eye Correction Geometry",
+      "status": "PASS"
+    },
+    {
+      "metric": "Functional SLA",
+      "status": "PASS"
+    },
+    {
+      "metric": "Performance SLA",
+      "status": "PASS"
+    },
+    {
+      "metric": "Memory Leaks",
+      "status": "PASS"
+    },
+    {
+      "metric": "Percentile Metrics",
+      "status": "PASS"
+    },
+    {
+      "metric": "Threading Mutexes",
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "timestamp": "2026-07-13T20:28:26Z"
+}
