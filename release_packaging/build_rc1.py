@@ -85,10 +85,20 @@ def compile_release_candidate():
             f.write(b"MZ_CERTIFIED_BINARY_PE_HEADER_QUANTILECULL_V1.2.0_RC1")
             
     # 2. Execute Inno Setup installer compilation
-    iscc_path = "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"
+    iscc_paths = [
+        "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
+        "C:\\Program Files\\Inno Setup 6\\ISCC.exe",
+        os.path.expandvars("%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe")
+    ]
+    iscc_path = None
+    for p in iscc_paths:
+        if os.path.exists(p):
+            iscc_path = p
+            break
+            
     setup_output = os.path.join(dist_dir, "QuantileCull_1.2.0_RC1_Setup.exe")
     
-    if os.path.exists(iscc_path):
+    if iscc_path:
         try:
             print("Compiling installer package using Inno Setup...")
             subprocess.run([iscc_path, os.path.join(workspace_dir, "setup_V1.2_RC1.iss")], check=True)
