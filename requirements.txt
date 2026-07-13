@@ -8,4 +8,5 @@ mediapipe==0.10.11
 sentry-sdk
 rawpy
 exifread
-onnxruntime
+protobuf==3.20.3
+onnxruntime==1.16.3
