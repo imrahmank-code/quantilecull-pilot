@@ -1851,13 +1851,15 @@ function renderFaceBoxes(photo, overlayEl) {
             const matchScore = face.matching_score !== undefined && face.matching_score !== null ? (face.matching_score * 100).toFixed(1) : '—';
             const clusterSize = face.cluster_size !== undefined && face.cluster_size !== null ? face.cluster_size : 0;
             const identityState = face.identity_state || 'unclustered';
+            const personId = face.person_id !== undefined && face.person_id !== null ? face.person_id : 'None';
+            const personName = face.person_name || 'Unresolved';
 
             // Semi-translucent background box
             const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             bgRect.setAttribute('x', face.x);
             bgRect.setAttribute('y', face.y + face.h + 2);
             bgRect.setAttribute('width', face.w);
-            bgRect.setAttribute('height', smallFontSize * 9.0);
+            bgRect.setAttribute('height', smallFontSize * 10.5);
             bgRect.setAttribute('fill', 'rgba(0,0,0,0.78)');
             bgRect.setAttribute('rx', '4');
             svg.appendChild(bgRect);
@@ -1869,7 +1871,8 @@ function renderFaceBoxes(photo, overlayEl) {
                 `Sharp: ${qSharp}  Exp: ${qExpos}`,
                 `Cluster ID: ${clusterId}`,
                 `Match: ${matchScore}%  Size: ${clusterSize}`,
-                `State: ${identityState}`
+                `State: ${identityState}`,
+                `Person: ${personName} (#${personId})`
             ];
             lines.forEach((line, li) => {
                 const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');

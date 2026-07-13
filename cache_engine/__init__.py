@@ -45,6 +45,15 @@ def _init_cache():
                                 FOREIGN KEY(file_path) REFERENCES image_cache(file_path) ON DELETE CASCADE)''')
                 conn.execute('CREATE INDEX IF NOT EXISTS idx_face_embeddings_filepath ON face_embeddings(file_path)')
                 
+                conn.execute('''CREATE TABLE IF NOT EXISTS persons (
+                                person_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                name TEXT UNIQUE,
+                                notes TEXT,
+                                creation_timestamp REAL,
+                                face_count INTEGER DEFAULT 0,
+                                key_face_path TEXT,
+                                key_face_bbox TEXT)''')
+
                 conn.execute('''CREATE TABLE IF NOT EXISTS identity_clusters (
                                 cluster_id INTEGER PRIMARY KEY AUTOINCREMENT,
                                 average_embedding BLOB,
@@ -96,6 +105,14 @@ def _init_cache():
                     conn.execute("ALTER TABLE image_cache ADD COLUMN xmp_mtime REAL DEFAULT NULL")
                     conn.commit()
                     print("[cache_engine] Successfully migrated cache schema: added xmp_mtime")
+
+                # 3. Schema migration: Add person_id to identity_clusters if not exists
+                cursor.execute("PRAGMA table_info(identity_clusters)")
+                c_columns = [row[1] for row in cursor.fetchall()]
+                if "person_id" not in c_columns:
+                    conn.execute("ALTER TABLE identity_clusters ADD COLUMN person_id INTEGER REFERENCES persons(person_id) ON DELETE SET NULL")
+                    conn.commit()
+                    print("[cache_engine] Successfully migrated cache schema: added person_id to identity_clusters")
     except Exception as e:
         print(f"[cache_engine] Failed to initialize SQLite cache database: {e}")
 
@@ -157,6 +174,7 @@ def clear_cache() -> bool:
         with _db_lock:
             conn = _get_db_connection()
             try:
+                conn.execute("DELETE FROM persons")
                 conn.execute("DELETE FROM cluster_statistics")
                 conn.execute("DELETE FROM cluster_history")
                 conn.execute("DELETE FROM identity_faces")
@@ -436,7 +454,7 @@ def incremental_cluster_update(file_path: str, faces: list):
 
 
 def get_face_embeddings(path: str) -> list:
-    """Queries face metadata and deserializes binary BLOB face embeddings from SQLite, resolving cluster info."""
+    """Queries face metadata and deserializes binary BLOB face embeddings from SQLite, resolving cluster and person info."""
     import numpy as np
     faces = []
     try:
@@ -446,9 +464,11 @@ def get_face_embeddings(path: str) -> list:
                 cursor.execute("""
                     SELECT f.bbox_x, f.bbox_y, f.bbox_w, f.bbox_h, f.confidence, 
                            f.sharpness, f.exposure, f.landmarks, f.orientation, f.embedding,
-                           f.cluster_id, s.face_count
+                           f.cluster_id, s.face_count, c.person_id, p.name
                     FROM identity_faces f
                     LEFT JOIN cluster_statistics s ON f.cluster_id = s.cluster_id
+                    LEFT JOIN identity_clusters c ON f.cluster_id = c.cluster_id
+                    LEFT JOIN persons p ON c.person_id = p.person_id
                     WHERE f.file_path=?
                 """, (path,))
                 rows = cursor.fetchall()
@@ -474,12 +494,14 @@ def get_face_embeddings(path: str) -> list:
                             "cluster_confidence": 0.0,
                             "identity_state": "unclustered",
                             "cluster_size": 0,
-                            "matching_score": 0.0
+                            "matching_score": 0.0,
+                            "person_id": None,
+                            "person_name": None
                         })
                     return faces
                     
                 for row in rows:
-                    bx, by, bw, bh, conf, sharp, exp, lm_json, orient_json, emb_blob, cid, csize = row
+                    bx, by, bw, bh, conf, sharp, exp, lm_json, orient_json, emb_blob, cid, csize, pid, pname = row
                     embedding = None
                     if emb_blob:
                         embedding = np.frombuffer(emb_blob, dtype=np.float32).tolist()
@@ -507,7 +529,9 @@ def get_face_embeddings(path: str) -> list:
                         "cluster_confidence": conf,
                         "identity_state": "stable" if cid is not None else "unclustered",
                         "cluster_size": csize or 0,
-                        "matching_score": matching_score
+                        "matching_score": matching_score,
+                        "person_id": pid,
+                        "person_name": pname
                     })
     except Exception as e:
         print(f"[cache_engine] Error reading face embeddings for {path}: {e}")
