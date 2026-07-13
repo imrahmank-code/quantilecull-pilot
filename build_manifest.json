@@ -1,6 +1,6 @@
 {
   "version": "1.2.0 RC1",
-  "timestamp": "2026-07-13T20:45:37Z",
+  "timestamp": "2026-07-13T21:00:46Z",
   "python_version": "3.11.9",
   "git_branch": "release/v1.2-experimental",
   "checksums": {
@@ -12,6 +12,6 @@
     "QuantileCull_1.2.0_RC1_Setup.exe": "93065d0b1714c6c2c562d1f338d3aa2a000fda49407eb0764a513e565f2fdea2",
     "RC1_TEST_PLAN.pdf": "c5d2e35cef9052dedbf13c07bebd2dc0f6d1996dfd759473c85d7d41b6a6f04d",
     "README.md": "fe43b69114e80d1349f40f4ac0e56b875a71f9dad2896f5664273cca0ace5af7",
-    "RELEASE_NOTES.md": "1c98f1305b870c90ed8ee5b1f1807c716add16810806afb84a6c901493323e31"
+    "RELEASE_NOTES.md": "c97191e53fd666a9d54fee54afdd25f1179f4104c3f8dffe99996eab64802b08"
   }
 }
