@@ -1804,6 +1804,12 @@ function renderFaceBoxes(photo, overlayEl) {
     if (toggleFocusHeatmap && !toggleFocusHeatmap.checked) {
         svg.style.display = 'none';
     }
+
+    const devMode = document.getElementById('toggle-developer-mode');
+    const isDevMode = devMode && devMode.checked;
+    const fontSize = Math.max(12, photo.height / 35);
+    const smallFontSize = Math.max(10, photo.height / 50);
+    const strokeW = Math.max(2, photo.width / 400);
     
     photo.metrics.faces.forEach((face, idx) => {
         // Face box rect (Standard brand Electric Blue #5B4BFF)
@@ -1814,7 +1820,7 @@ function renderFaceBoxes(photo, overlayEl) {
         rect.setAttribute('height', face.h);
         rect.setAttribute('fill', 'none');
         rect.setAttribute('stroke', '#5B4BFF');
-        rect.setAttribute('stroke-width', Math.max(2, photo.width / 400).toFixed(0));
+        rect.setAttribute('stroke-width', strokeW.toFixed(0));
         rect.setAttribute('filter', 'drop-shadow(0px 0px 4px rgba(91, 75, 255, 0.4))');
         
         // Text tag
@@ -1822,13 +1828,52 @@ function renderFaceBoxes(photo, overlayEl) {
         text.setAttribute('x', face.x);
         text.setAttribute('y', face.y - (photo.height / 100));
         text.setAttribute('fill', '#FFFFFF');
-        text.setAttribute('font-size', (photo.height / 35).toFixed(0));
+        text.setAttribute('font-size', fontSize.toFixed(0));
         text.setAttribute('font-family', "'Outfit', sans-serif");
         text.setAttribute('font-weight', 'bold');
         text.textContent = `Face #${idx + 1} (${face.sharpness}% sharp)`;
         
         svg.appendChild(rect);
         svg.appendChild(text);
+
+        // Developer Mode: extra info panel
+        if (isDevMode) {
+            const conf = face.confidence !== undefined ? (face.confidence * 100).toFixed(1) : '—';
+            const orient = face.orientation || {};
+            const roll = orient.roll !== undefined ? orient.roll.toFixed(1) : '—';
+            const pitch = orient.pitch !== undefined ? orient.pitch.toFixed(1) : '—';
+            const yaw = orient.yaw !== undefined ? orient.yaw.toFixed(1) : '—';
+            const hasEmb = face.embedding && face.embedding.length > 0 ? '✓' : '✗';
+            const qSharp = face.quality ? face.quality.sharpness : face.sharpness;
+            const qExpos = face.quality ? face.quality.exposure : (face.face_exposure || '—');
+
+            // Semi-translucent background box
+            const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bgRect.setAttribute('x', face.x);
+            bgRect.setAttribute('y', face.y + face.h + 2);
+            bgRect.setAttribute('width', face.w);
+            bgRect.setAttribute('height', smallFontSize * 5.5);
+            bgRect.setAttribute('fill', 'rgba(0,0,0,0.7)');
+            bgRect.setAttribute('rx', '4');
+            svg.appendChild(bgRect);
+
+            const lines = [
+                `Conf: ${conf}%  Emb: ${hasEmb}`,
+                `Roll: ${roll}° Pitch: ${pitch}°`,
+                `Yaw: ${yaw}°`,
+                `Sharp: ${qSharp}  Exp: ${qExpos}`
+            ];
+            lines.forEach((line, li) => {
+                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', face.x + 4);
+                t.setAttribute('y', face.y + face.h + 4 + smallFontSize * (li + 1));
+                t.setAttribute('fill', '#00E5FF');
+                t.setAttribute('font-size', smallFontSize.toFixed(0));
+                t.setAttribute('font-family', "'Outfit', monospace");
+                t.textContent = line;
+                svg.appendChild(t);
+            });
+        }
 
         // Draw left eye polygon overlay (Focal Heatmap)
         if (face.left_eye_landmarks && face.left_eye_landmarks.length > 0) {

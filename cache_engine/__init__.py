@@ -19,7 +19,7 @@ def _init_cache():
     try:
         with _db_lock:
             with _get_db_connection() as conn:
-                # 1. Create table if missing
+                # 1. Create tables if missing
                 conn.execute('''CREATE TABLE IF NOT EXISTS image_cache (
                                 file_path TEXT PRIMARY KEY,
                                 mtime REAL,
@@ -28,6 +28,22 @@ def _init_cache():
                                 ratio REAL,
                                 timestamp REAL,
                                 metrics JSON)''')
+                                
+                conn.execute('''CREATE TABLE IF NOT EXISTS face_embeddings (
+                                face_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                file_path TEXT,
+                                bbox_x INTEGER,
+                                bbox_y INTEGER,
+                                bbox_w INTEGER,
+                                bbox_h INTEGER,
+                                confidence REAL,
+                                sharpness REAL,
+                                exposure REAL,
+                                landmarks JSON,
+                                orientation JSON,
+                                embedding BLOB,
+                                FOREIGN KEY(file_path) REFERENCES image_cache(file_path) ON DELETE CASCADE)''')
+                conn.execute('CREATE INDEX IF NOT EXISTS idx_face_embeddings_filepath ON face_embeddings(file_path)')
                                 
                 # 2. Schema migration: Add xmp_mtime if not exists
                 cursor = conn.cursor()
@@ -98,6 +114,7 @@ def clear_cache() -> bool:
         with _db_lock:
             conn = _get_db_connection()
             try:
+                conn.execute("DELETE FROM face_embeddings")
                 conn.execute("DELETE FROM image_cache")
                 conn.commit()
                 conn.isolation_level = None
@@ -108,3 +125,65 @@ def clear_cache() -> bool:
     except Exception as e:
         print(f"[cache_engine] Error clearing database cache: {e}")
         return False
+
+
+def get_face_embeddings(path: str) -> list:
+    """Queries face metadata and deserializes binary BLOB face embeddings from SQLite."""
+    import numpy as np
+    faces = []
+    try:
+        with _db_lock:
+            with _get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""SELECT bbox_x, bbox_y, bbox_w, bbox_h, confidence, 
+                                         sharpness, exposure, landmarks, orientation, embedding 
+                                  FROM face_embeddings WHERE file_path=?""", (path,))
+                rows = cursor.fetchall()
+                for row in rows:
+                    bx, by, bw, bh, conf, sharp, exp, lm_json, orient_json, emb_blob = row
+                    embedding = None
+                    if emb_blob:
+                        embedding = np.frombuffer(emb_blob, dtype=np.float32).tolist()
+                    faces.append({
+                        "bbox": [bx, by, bw, bh],
+                        "confidence": conf,
+                        "quality": {"sharpness": sharp, "exposure": exp},
+                        "landmarks": json.loads(lm_json) if lm_json else {},
+                        "orientation": json.loads(orient_json) if orient_json else {},
+                        "embedding": embedding
+                    })
+    except Exception as e:
+        print(f"[cache_engine] Error reading face embeddings for {path}: {e}")
+    return faces
+
+
+def set_face_embeddings(path: str, faces: list):
+    """Saves face embeddings and metadata to SQLite, serializing embedding arrays as binary BLOBs."""
+    import numpy as np
+    try:
+        with _db_lock:
+            with _get_db_connection() as conn:
+                conn.execute("DELETE FROM face_embeddings WHERE file_path=?", (path,))
+                for face in faces:
+                    bbox = face.get("bbox", [0, 0, 0, 0])
+                    conf = face.get("confidence", 1.0)
+                    q = face.get("quality", {})
+                    sharp = q.get("sharpness", 0.0)
+                    exp = q.get("exposure", 0.0)
+                    lm = face.get("landmarks", {})
+                    orient = face.get("orientation", {})
+                    emb = face.get("embedding", None)
+                    
+                    emb_blob = None
+                    if emb:
+                        emb_blob = np.array(emb, dtype=np.float32).tobytes()
+                        
+                    conn.execute('''INSERT INTO face_embeddings 
+                                    (file_path, bbox_x, bbox_y, bbox_w, bbox_h, confidence, 
+                                     sharpness, exposure, landmarks, orientation, embedding) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                 (path, bbox[0], bbox[1], bbox[2], bbox[3], conf, 
+                                  sharp, exp, json.dumps(lm), json.dumps(orient), emb_blob))
+                conn.commit()
+    except Exception as e:
+        print(f"[cache_engine] Error writing face embeddings for {path}: {e}")

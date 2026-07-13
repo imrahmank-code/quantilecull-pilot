@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantileCull — Computer Vision Photo Cleaner & Optimizer</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <link rel="stylesheet" href="static/css/style.css?v=15">
+</head>
+<body>
+    <!-- App Container -->
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header" style="margin-bottom: 1.5rem; padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <div class="header-logo" style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="logo-svg-wrap" style="height: 32px; display: flex; align-items: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none" style="height: 100%; width: auto;">
+                      <defs>
+                        <mask id="appMask">
+                          <rect width="100" height="100" fill="#FFFFFF" />
+                          <polygon points="50,50 99.8,45.6 95.3,28.9" fill="#000000" />
+                          <line x1="50" y1="50" x2="95" y2="95" stroke="#000000" stroke-width="14.5" stroke-linecap="butt" />
+                        </mask>
+                      </defs>
+                      <g transform="translate(10, 10) scale(0.6)">
+                        <circle cx="50" cy="50" r="34" stroke="#FFFFFF" stroke-width="10.5" mask="url(#appMask)" fill="none" />
+                        <circle cx="50" cy="50" r="18" stroke="#5B4BFF" stroke-width="9.5" fill="none" />
+                        <line x1="58" y1="58" x2="77" y2="77" stroke="#5B4BFF" stroke-width="9.5" stroke-linecap="round" />
+                      </g>
+                      <text x="85" y="42" font-family="'Inter', 'Outfit', system-ui, -apple-system, sans-serif" font-size="34" letter-spacing="-0.5px">
+                        <tspan fill="#FFFFFF" font-weight="500">Quantile</tspan><tspan fill="#5B4BFF" font-weight="800">Cull</tspan>
+                      </text>
+                      <text x="85" y="62" font-family="'Inter', 'Outfit', system-ui, -apple-system, sans-serif" font-size="10" font-weight="700" fill="#707784" letter-spacing="1.5px">
+                        SMART CULLING. BETTER RESULTS.
+                      </text>
+                    </svg>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div id="update-badge" class="hidden" style="background: rgba(52, 199, 89, 0.15); border: 1px solid rgba(52, 199, 89, 0.35); border-radius: 6px; padding: 0.35rem 0.65rem; color: #34c759; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 12px; height: 12px; flex-shrink: 0;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 8 12 12 14 14"></polyline>
+                    </svg>
+                    <span>Update Available</span>
+                </div>
+                <div id="trial-badge" class="hidden" style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; padding: 0.35rem 0.65rem; color: var(--cyan); font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">Trial: -- Days Remaining</div>
+                <button id="btn-open-feedback" title="Send Feedback" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary); cursor: pointer; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.2s; height: 32px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Feedback</span>
+                </button>
+                <button id="btn-open-feature" title="Request Feature" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary); cursor: pointer; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.2s; height: 32px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Request Feature</span>
+                </button>
+
+                <div style="width: 1px; height: 16px; background: rgba(255, 255, 255, 0.15); margin: 0 0.25rem;"></div>
+                <div style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; opacity: 0.85; line-height: 1;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; color: var(--cyan); flex-shrink: 0; display: inline-block;">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Local Processing • Privacy First</span>
+                </div>
+                <div style="width: 1px; height: 16px; background: rgba(255, 255, 255, 0.15); margin: 0 0.25rem;"></div>
+                <!-- About Button -->
+                <button class="btn-refresh-header" id="btn-about" title="About QuantileCull" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary); cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px; display: block;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </button>
+                <!-- Header refresh button circle -->
+                <button class="btn-refresh-header" id="btn-hard-refresh" title="Reload Application" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary); cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px; display: block;">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <!-- Left Side: Upload & Control Settings Panel -->
+            <section class="panel-left glass-panel">
+                <div class="settings-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.75rem;">
+                    <h2 style="margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--text-primary);">Configuration</h2>
+                    <button class="btn-close-settings" id="btn-close-settings" style="background: transparent; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; line-height: 1;" title="Close Settings">×</button>
+                </div>
+                
+                <!-- Folder Location -->
+                <div class="panel-tab-content" id="panel-local-content" style="border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 1.25rem; margin-bottom: 1.25rem;">
+                    <h2 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-secondary);">Folder Location</h2>
+                    <div class="folder-input-wrapper">
+                        <input type="text" id="local-path-input" placeholder="Enter absolute directory path" readonly>
+                        <button id="btn-browse-folder" title="Browse Folder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Parameters Card (Universal) -->
+                <div class="settings-section" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <!-- Duplicate Threshold -->
+                    <div class="setting-group" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+                        <div class="setting-header" style="margin-bottom: 0.35rem;">
+                            <label for="threshold-slider" style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 0.82rem; font-weight: 500; cursor: help;" title="Low values (1-8) group identical bursts; high values (12-100) group different angles or lighting.">
+                                Duplicate Threshold <span style="color: var(--text-muted); font-size: 0.75rem;">ⓘ</span>
+                            </label>
+                        </div>
+                        <div class="slider-container-relative" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                            <input type="range" id="threshold-slider" min="1" max="100" value="12" class="slider">
+                            <div class="slider-thumb-value" id="slider-thumb-value">12</div>
+                        </div>
+                        <div class="slider-labels" style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            <span>Conservative (1)</span>
+                            <span>Aggressive (100)</span>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Cull: Keep Top % -->
+                    <div class="setting-group" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+                        <div class="setting-header" style="margin-bottom: 0.35rem;">
+                            <label for="top-percent-select" style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 0.82rem; font-weight: 500; cursor: help;" title="Keeps only the top percentage of images in each group based on quality scores; rest are marked for backup.">
+                                Auto-Cull: Keep Top % <span style="color: var(--text-muted); font-size: 0.75rem;">ⓘ</span>
+                            </label>
+                        </div>
+                        <select id="top-percent-select" class="input-select" style="height: 36px; padding: 0.45rem 2rem 0.45rem 0.75rem; font-size: 0.85rem; border-radius: 8px;">
+                            <option value="5">Top 5% (Aggressive)</option>
+                            <option value="10">Top 10%</option>
+                            <option value="25" selected>Top 25% (Recommended)</option>
+                            <option value="50">Top 50% (Conservative)</option>
+                            <option value="">Keep All (Manual Review)</option>
+                        </select>
+                    </div>
+
+                    <!-- Culling Mode Selection -->
+                    <div class="setting-group" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0; margin-top: 0.5rem;">
+                        <div class="setting-header" style="margin-bottom: 0.5rem;">
+                            <label style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 0.82rem; font-weight: 500; cursor: help;" title="Smart Cull uses global top-percent; Editorial Coverage culls with category-specific quotas.">
+                                Mode <span style="color: var(--text-muted); font-size: 0.75rem;">ⓘ</span>
+                            </label>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                                <input type="radio" name="cull-mode" value="smart_cull" checked style="accent-color: var(--cyan); width: 14px; height: 14px; cursor: pointer;">
+                                Smart Cull (Default)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                                <input type="radio" name="cull-mode" value="editorial_coverage" style="accent-color: var(--cyan); width: 14px; height: 14px; cursor: pointer;">
+                                Editorial Coverage
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Options Accordion -->
+                    <div class="settings-section accordion" id="advanced-settings-accordion" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem; margin-top: 0.25rem;">
+                        <div class="accordion-header" id="btn-toggle-advanced" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                            <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Advanced Options</span>
+                            <svg id="adv-accordion-arrow" style="width: 12px; height: 12px; transition: transform 0.2s; color: var(--text-secondary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                        <div class="accordion-body hidden" id="advanced-settings-body" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                            <!-- Sentry checkbox -->
+                            <div class="setting-group" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; cursor: pointer; color: var(--text-secondary); user-select: none;">
+                                    <input type="checkbox" id="settings-sentry-optin" style="accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;">
+                                    Share anonymous crash reports
+                                </label>
+                            </div>
+                            <!-- Support Logs Button -->
+                            <button class="btn btn-secondary btn-block" id="btn-export-diagnostics" style="font-size: 0.78rem; height: 32px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 12px; height: 12px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Export Support Logs
+                            </button>
+                            <!-- Clear Cache Button -->
+                            <button class="btn btn-secondary btn-block" id="btn-clear-cache" style="font-size: 0.78rem; height: 32px; border-radius: 6px; margin: 0;">
+                                Clear Privacy Cache
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Run CV Analysis Sidebar CTA (Visible only inside modal dialog) -->
+                    <button class="btn btn-primary btn-block" id="btn-analyze" disabled style="height: 40px; border-radius: 8px; margin-top: 0.5rem;">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Run AI Analysis
+                    </button>
+                    
+                    <button class="btn btn-secondary btn-block hidden" id="btn-clear-all" style="margin: 0; height: 40px; border-radius: 8px; display: none;">
+                        Reset Gallery
+                    </button>
+                </div>
+
+                <!-- Local processing guarantee at the bottom of sidebar -->
+                <div style="margin-top: auto; padding-top: 1.5rem; display: flex; align-items: flex-start; gap: 0.6rem; color: var(--text-muted); font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.04); margin-bottom: 0.25rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); margin-top: 1px;">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                        <span style="color: var(--text-secondary); font-weight: 500;">All processing is done locally</span>
+                        <span>Your photos never leave your device.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Center Workspace: Analysis Results & Clustering workspace -->
+            <section class="panel-center" id="panel-center">
+                <!-- Analysis Loading Mask / Home Launchpad -->
+                <div class="glass-panel results-placeholder" id="results-placeholder" style="min-height: 600px; padding: 2.5rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 2rem;">
+                    
+                    <!-- Top Heading Section (Common to both states) -->
+                    <div style="text-align: center; margin-bottom: 0.5rem;">
+                        <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.75rem; font-family: var(--font-header); color: #ffffff; letter-spacing: -0.5px;">Scan Your Photo Library</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 500px; margin: 0 auto; line-height: 1.5;">Find duplicates, burst shots, and low-quality photos<br>using local AI-powered computer vision.</p>
+                    </div>
+
+                    <!-- Center Area: State A (Welcome) OR State B (Selected Folder Card) -->
+                    
+                    <!-- State A: Welcome / Initial Scan Hub -->
+                    <div id="hero-initial-state" class="hero-substate-container" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <!-- Select Folder CTA -->
+                        <button class="btn btn-primary" id="btn-hero-browse" style="margin: 0 auto 1.5rem; padding: 0.75rem 2rem; font-size: 0.95rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; background: #007aff; border: none; box-shadow: 0 4px 15px rgba(0,122,255,0.25); cursor: pointer;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            Select Photo Folder
+                        </button>
+                        
+                        <!-- Supported Formats Badges -->
+                        <div class="supported-formats" style="display: flex; gap: 0.4rem; justify-content: center;">
+                            <span class="format-badge" style="font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 5px;">JPG</span>
+                            <span class="format-badge" style="font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 5px;">PNG</span>
+                            <span class="format-badge" style="font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 5px;">WEBP</span>
+                            <span class="format-badge" style="font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 5px;">HEIC</span>
+                            <span class="format-badge" style="font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 5px;">RAW</span>
+                        </div>
+                    </div>
+
+                    <!-- State B: Folder Selected Launchpad -->
+                    <div id="hero-selected-state" class="hero-substate-container hidden" style="width: 100%; max-width: 620px; margin: 0 auto;">
+                        <div class="selected-folder-card" style="background: rgba(18,18,22,0.45); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 1.75rem 2rem; display: flex; flex-direction: row; gap: 2rem; align-items: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); backdrop-filter: blur(20px); text-align: left;">
+                            
+                            <!-- Left: Collage Grid -->
+                            <div id="launchpad-collage" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; width: 170px; height: 170px; flex-shrink: 0; background: rgba(255,255,255,0.02); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); padding: 0.35rem;">
+                                <img src="static/img/mountain.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; aspect-ratio: 1;">
+                                <img src="static/img/forest.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; aspect-ratio: 1;">
+                                <img src="static/img/sunset.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; aspect-ratio: 1;">
+                                <img src="static/img/dog.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; aspect-ratio: 1;">
+                            </div>
+                            
+                            <!-- Right: Details -->
+                            <div style="display: flex; flex-direction: column; gap: 1rem; flex: 1;">
+                                <!-- Header with folder icon + name -->
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 32px; height: 32px; color: var(--gold); flex-shrink: 0;">
+                                        <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
+                                    </svg>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <h3 id="launchpad-folder-name" style="font-size: 1.35rem; font-weight: 700; margin: 0; color: var(--text-primary); line-height: 1.2;">Pictures</h3>
+                                        <p id="launchpad-folder-path" style="font-size: 0.75rem; color: var(--text-muted); margin: 0; word-break: break-all;">C:\Users\Admin\Pictures</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Stats layout: Photos Found & Est. Scan Time -->
+                                <div style="display: flex; gap: 2.5rem; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.85rem;">
+                                    <div style="display: flex; flex-direction: column; gap: 3px; min-width: 90px;">
+                                        <strong id="launchpad-photo-count" style="font-size: 1.65rem; color: var(--cyan); line-height: 1; font-family: var(--font-header);">5</strong>
+                                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Photos Found</span>
+                                    </div>
+                                    <div style="width: 1px; height: 28px; background: rgba(255,255,255,0.08);"></div>
+                                    <div style="display: flex; flex-direction: column; gap: 3px;">
+                                        <strong id="launchpad-est-time" style="font-size: 1.65rem; color: var(--green); line-height: 1; font-family: var(--font-header);">&lt;1 sec</strong>
+                                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Estimated Time</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Run AI Analysis Action Button -->
+                                <button class="btn btn-primary btn-block" id="btn-launchpad-analyze" style="height: 42px; border-radius: 10px; font-size: 0.95rem; background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 100%); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; box-shadow: 0 4px 20px rgba(10, 132, 255, 0.25); cursor: pointer; transition: all 0.2s ease;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 16px; height: 16px; color: rgba(255, 255, 255, 0.5) !important; display: block;">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    Run AI Analysis
+                                </button>
+                                
+                                <!-- Subtle trust badge statement -->
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); margin-top: -0.25rem; line-height: 1;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 13px; height: 13px; color: var(--cyan); flex-shrink: 0;">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                        <polyline points="9 11 11 13 15 9"></polyline>
+                                    </svg>
+                                    <span>Local processing • No cloud upload</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Section: Workflow Steps -->
+                    <div class="workflow-wrapper" style="width: 100%; max-width: 800px; position: relative;">
+                        <div class="workflow-line" style="position: absolute; top: 24px; left: 10%; right: 10%; height: 1px; border-top: 1px dotted rgba(255, 255, 255, 0.15); z-index: 1;"></div>
+                        <div class="quick-start-workflow" style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; position: relative; z-index: 2; margin: 0; padding: 0;">
+                            
+                            <!-- Step 1 -->
+                            <div class="workflow-step-node" style="display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1;">
+                                <div class="step-icon-circle active" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; background: var(--cyan); color: #fff; box-shadow: 0 4px 12px rgba(10, 132, 255, 0.25);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; color: var(--gold) !important; display: block;">
+                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0.3rem;">
+                                    <span style="width: 16px; height: 16px; border-radius: 50%; background: var(--cyan); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700;">1</span>
+                                    <span style="font-size: 0.85rem; font-weight: 600; color: #fff;">Select Folder</span>
+                                </div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; max-width: 130px;">Choose a folder<br>to analyze</span>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="workflow-step-node" style="display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1;">
+                                <div class="step-icon-circle" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; color: rgba(255, 255, 255, 0.4) !important; display: block;">
+                                        <line x1="4" y1="21" x2="4" y2="14"></line>
+                                        <line x1="4" y1="10" x2="4" y2="3"></line>
+                                        <line x1="12" y1="21" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12" y2="3"></line>
+                                        <line x1="20" y1="21" x2="20" y2="16"></line>
+                                        <line x1="20" y1="12" x2="20" y2="3"></line>
+                                        <line x1="2" y1="14" x2="6" y2="14"></line>
+                                        <line x1="10" y1="8" x2="14" y2="8"></line>
+                                        <line x1="18" y1="16" x2="22" y2="16"></line>
+                                    </svg>
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0.3rem;">
+                                    <span style="width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700;">2</span>
+                                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Configure Settings</span>
+                                </div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; max-width: 130px;">Adjust thresholds<br>and preferences</span>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="workflow-step-node" style="display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1;">
+                                <div class="step-icon-circle" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; color: rgba(255, 255, 255, 0.4) !important; display: block;">
+                                        <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                                        <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                                        <line x1="9" y1="12" x2="15" y2="12"></line>
+                                        <line x1="12" y1="9" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0.3rem;">
+                                    <span style="width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700;">3</span>
+                                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Run AI Analysis</span>
+                                </div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; max-width: 130px;">Let AI find duplicates<br>and low-quality photos</span>
+                            </div>
+
+                            <!-- Step 4 -->
+                            <div class="workflow-step-node" style="display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1;">
+                                <div class="step-icon-circle" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; color: rgba(255, 255, 255, 0.4) !important; display: block;">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0.3rem;">
+                                    <span style="width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700;">4</span>
+                                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Review Results</span>
+                                </div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; max-width: 130px;">Review, compare<br>and clean up</span>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+<!-- Duplicate Results Container -->
+                <div class="results-container hidden" id="results-container">
+                    <!-- Unified Premium Culling Toolbar -->
+                    <div class="culling-toolbar" id="culling-toolbar">
+                        <div class="toolbar-section-left">
+                            <div class="toolbar-logo" title="QuantileCull — AI Quantile Culler">
+                                <div class="toolbar-logo-icon" style="color: var(--cyan); display: flex; align-items: center; width: 20px; height: 20px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" style="width: 100%; height: 100%;">
+                                      <defs>
+                                        <mask id="toolbarMask">
+                                          <rect width="100" height="100" fill="#FFFFFF" />
+                                          <polygon points="50,50 99.8,45.6 95.3,28.9" fill="#000000" />
+                                          <line x1="50" y1="50" x2="95" y2="95" stroke="#000000" stroke-width="14.5" stroke-linecap="butt" />
+                                        </mask>
+                                      </defs>
+                                      <circle cx="50" cy="50" r="34" stroke="#FFFFFF" stroke-width="10.5" mask="url(#toolbarMask)" fill="none" />
+                                      <circle cx="50" cy="50" r="18" stroke="#5B4BFF" stroke-width="9.5" fill="none" />
+                                      <line x1="58" y1="58" x2="77" y2="77" stroke="#5B4BFF" stroke-width="9.5" stroke-linecap="round" />
+                                    </svg>
+                                </div>
+                                <span class="toolbar-logo-text">QuantileCull</span>
+                            </div>
+
+                            <span class="toolbar-stat-sep">|</span>
+
+                            <!-- Micro stats panel -->
+                            <div class="toolbar-stats-container">
+                                <span class="toolbar-micro-stat" title="Total Photos Scanned">
+                                    <span class="stat-lbl">Scanned:</span> <strong id="toolbar-stat-total">0</strong>
+                                </span>
+                                <span class="toolbar-stat-sep">•</span>
+                                <span class="toolbar-micro-stat" title="Duplicate Groups Detected">
+                                    <span class="stat-lbl">Groups:</span> <strong id="toolbar-stat-groups">0</strong>
+                                </span>
+                                <span class="toolbar-stat-sep">•</span>
+                                <span class="toolbar-micro-stat" title="Reclaimable Space Saved">
+                                    <span class="stat-lbl">Reclaim:</span> <strong id="toolbar-stat-space">0 KB</strong>
+                                </span>
+                            </div>
+
+                            <span class="toolbar-stat-sep">|</span>
+
+                            <!-- Active Culling Controls -->
+                            <button class="badge badge-selected-action" id="btn-selected-photos" title="View selected photos to keep">
+                                <span id="unique-sets-count">0</span> Selected
+                            </button>
+                            <span class="toolbar-stat-sep">•</span>
+                            <span class="hidden"><span id="total-groups-count">0</span> Sets</span> <!-- Maintained for JS reference -->
+                            <button class="badge badge-export" id="btn-trigger-export" title="Proceed to Export Options">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:10px; height:10px; margin-right: 3px; display: inline-block; vertical-align: middle;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Export
+                            </button>
+                        </div>
+
+                        <div class="toolbar-section-right">
+                            <!-- Discard All Button -->
+                            <button class="btn btn-discard-all" id="btn-discard-all" title="Clean up duplicates by moving them to the duplicates_backup folder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px; height:12px; margin-right: 3px; display: inline-block; vertical-align: middle;">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6l-2 14H7L5 6"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                                Discard All
+                            </button>
+
+                            <!-- Thumbnail Zoom Control -->
+                            <div class="zoom-control">
+                                <span class="zoom-icon" title="Zoom Out" id="zoom-out-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px; height:11px; display:block;">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </span>
+                                <input type="range" id="thumbnail-zoom-slider" min="120" max="320" value="200" class="zoom-slider" title="Adjust thumbnail size">
+                                <span class="zoom-icon" title="Zoom In" id="zoom-in-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px; height:11px; display:block;">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </span>
+                            </div>
+
+                            <!-- Toggle Review Modes -->
+                            <div class="review-mode-selector">
+                                <button class="btn-toggle active" id="btn-mode-wizard">Wizard</button>
+                                <button class="btn-toggle" id="btn-mode-feed">Grid</button>
+                            </div>
+
+                            <!-- Hard Refresh Button next to Settings Gear -->
+                            <button class="btn-settings-gear" id="btn-hard-refresh-toolbar" title="Hard Refresh Application">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px; display:block;">
+                                    <path d="M23 4v6h-6"></path>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Settings Gear Button -->
+                            <button class="btn-settings-gear" id="btn-modify-settings" title="Analysis Settings">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px; display:block;">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Groups Grid Feed -->
+                    <div class="groups-feed" id="groups-feed"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+<!-- Floating Wizard Navigation Panel at Bottom Center of Viewport -->
+    <div class="wizard-nav-floating hidden" id="wizard-nav-panel">
+        <button class="btn-nav-arrow" id="btn-wizard-prev" title="Previous Set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px; display:block;">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+        <span class="wizard-counter-text">SET <strong id="wizard-index">1</strong> OF <strong id="wizard-total">1</strong></span>
+        <button class="btn-nav-arrow" id="btn-wizard-next" title="Next Set">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px; display:block;">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+    </div>
+    
+    <!-- Custom Destructive Action Multi-Step Confirmation Modal -->
+    <div class="modal hidden" id="destructive-confirm-modal">
+        <div class="modal-backdrop" id="destructive-modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding: 1rem 1.25rem;">
+                <h2 id="destructive-modal-title" style="font-size: 1.1rem; color: var(--red); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; flex-shrink: 0;">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Confirm Action
+                </h2>
+                <button class="btn-close" id="btn-close-destructive-modal" style="font-size: 1.25rem; line-height: 1;">×</button>
+            </div>
+            <div class="modal-body" style="grid-template-columns: 1fr; padding: 1.25rem; font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary); display: flex; flex-direction: column;">
+                <div id="destructive-step-1">
+                    <p id="destructive-modal-message-1" style="margin-top: 0; margin-bottom: 1rem;"></p>
+                    <div style="background: rgba(255, 69, 58, 0.08); border: 1px solid rgba(255, 69, 58, 0.15); border-radius: 8px; padding: 0.75rem; color: #ff453a; font-weight: 500; margin-bottom: 1.25rem; display: flex; gap: 0.5rem; align-items: flex-start;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>Warning: This action permanently modifies files and cannot be undone.</span>
+                    </div>
+                    <button class="btn btn-primary btn-block" id="btn-destructive-next" style="height: 38px;">Proceed to Confirmation</button>
+                </div>
+                <div id="destructive-step-2" class="hidden">
+                    <p id="destructive-modal-message-2" style="margin-top: 0; margin-bottom: 1.25rem;"></p>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem;">
+                        <label for="destructive-confirm-input" style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">Type <strong style="color: var(--text-primary); user-select: none;">CONFIRM</strong> to authorize this operation:</label>
+                        <input type="text" id="destructive-confirm-input" class="input-text" style="height: 36px; padding: 0.5rem; text-align: center; font-weight: 700; letter-spacing: 2px;" placeholder="CONFIRM">
+                    </div>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button class="btn btn-secondary" id="btn-destructive-back" style="flex: 1; height: 38px;">Back</button>
+                        <button class="btn btn-gradient" id="btn-destructive-confirm" disabled style="flex: 1; height: 38px; background: linear-gradient(135deg, #ff453a 0%, #ff9f0a 100%);">Authorize & Run</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crash Recovery Modal -->
+    <div class="modal hidden" id="recovery-modal" style="z-index: 10005;">
+        <div class="modal-backdrop" id="recovery-modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 420px; background: rgba(18, 18, 20, 0.95); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding: 1rem 1.25rem;">
+                <h2 style="font-size: 1.1rem; color: var(--cyan); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; flex-shrink: 0;">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                    </svg>
+                    Unfinished Session Detected
+                </h2>
+                <button class="btn-close" id="btn-close-recovery-modal" style="font-size: 1.25rem; line-height: 1;">×</button>
+            </div>
+            <div class="modal-body" style="grid-template-columns: 1fr; padding: 1.25rem; font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary); display: flex; flex-direction: column; gap: 1rem;">
+                <p style="margin: 0; color: var(--text-secondary);">We detected that a previous analysis run in the following folder was interrupted:</p>
+                <div style="background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 0.75rem; word-break: break-all; font-family: monospace; font-size: 0.78rem; color: var(--text-primary);" id="recovery-path"></div>
+                <p style="margin: 0; color: var(--text-secondary);">We processed <strong style="color: var(--cyan);" id="recovery-processed">0</strong> photos. Would you like to resume and complete this analysis session?</p>
+                <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem; justify-content: flex-end;">
+                    <button class="btn btn-secondary" id="btn-recovery-ignore" style="height: 36px; padding: 0 1rem;">Ignore & Delete</button>
+                    <button class="btn btn-gradient" id="btn-recovery-resume" style="height: 36px; padding: 0 1.25rem; background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 100%); font-weight: 500;">Resume Session</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Relocated Modals & Overlays (direct children of body) -->
+        <!-- Settings Modal Backdrop (for full-screen culling mode) -->
+        <div class="settings-modal-backdrop hidden" id="settings-modal-backdrop"></div>
+
+                 <!-- Loading Overlay with Camera Lens Progress Circle -->
+                <div class="loading-overlay hidden" id="loading-overlay">
+                    <div class="spinner-container">
+                        <div class="lens-progress-container">
+                            <svg class="lens-svg" viewBox="0 0 100 100">
+                                <defs>
+                                    <linearGradient id="lensGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#0a84ff"/>
+                                        <stop offset="50%" stop-color="#5e5ce6"/>
+                                        <stop offset="100%" stop-color="#ff453a"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- Outer bezel circle -->
+                                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1.5"></circle>
+                                <!-- Main track circle -->
+                                <circle class="lens-track" cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"></circle>
+                                <!-- Progress fill circle (circumference of r=40 is 2*pi*40 ≈ 251.3px) -->
+                                <circle class="lens-progress-fill" id="lens-progress-fill" cx="50" cy="50" r="40" fill="none" stroke="url(#lensGradient)" stroke-width="4" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3" transform="rotate(-90 50 50)"></circle>
+                            </svg>
+                            <div class="lens-percentage" id="lens-percentage">0%</div>
+                        </div>
+                        <h3 id="loading-status">Clustering Photos...</h3>
+                        <p class="loading-substatus" id="loading-substatus">Computing perceptual hashes & building similarity graph.</p>
+                        <button class="btn btn-secondary" id="btn-cancel-job" style="margin: 1.5rem auto 0 auto; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); font-weight: 500; font-size: 0.85rem; padding: 0.5rem 1.25rem;">Cancel Operation</button>
+                    </div>
+                </div>
+
+                <!-- Model Download Overlay -->
+                <div class="loading-overlay hidden" id="model-download-overlay" style="z-index: 10000;">
+                    <div class="spinner-container" style="background: rgba(18, 18, 20, 0.95); border: 1px solid rgba(255,255,255,0.05); padding: 2.5rem; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                        <div class="logo-icon" style="width: 48px; height: 48px; margin: 0 auto 1rem; color: var(--cyan); background: rgba(10, 132, 255, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 24px; height: 24px;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </div>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Downloading AI Models...</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem; max-width: 320px; text-align: center;" id="model-download-substatus">Fetching OpenCV DNN and FSRCNN models to AppData (approx 11MB)...</p>
+                        <div class="progress-bar-container" style="width: 240px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin: 0 auto 1rem;">
+                            <div id="model-download-progress" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--cyan) 0%, var(--purple) 100%); transition: width 0.3s ease;"></div>
+                        </div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); text-align: center;" id="model-download-percent">0%</div>
+                    </div>
+                </div>
+
+                
+        <!-- Side-by-Side Comparison Modal -->
+        <div class="modal hidden" id="compare-modal">
+            <div class="modal-backdrop" id="compare-modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); position: relative;">
+                    <h2 style="margin: 0; font-size: 1.05rem;">Compare Photos Detail</h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto; margin-right: 3rem;">
+                        <label style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; user-select: none; font-weight: 500;">
+                            <input type="checkbox" id="toggle-focus-heatmap" checked style="accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;">
+                            Focus Heatmap
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; user-select: none; font-weight: 500; margin-left: 0.75rem;">
+                            <input type="checkbox" id="toggle-developer-mode" style="accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;">
+                            Developer Mode
+                        </label>
+                    </div>
+                    <button class="btn-close" id="btn-close-modal" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Left Photo -->
+                    <div class="compare-pane" id="compare-pane-left">
+                        <div class="compare-pane-header">
+                            <span class="compare-badge badge-cyan" id="left-badge">PHOTO A</span>
+                            <span class="compare-score" id="left-score">Score: 0</span>
+                        </div>
+                        <div class="compare-image-wrap">
+                            <img src="" alt="Photo A" id="left-img">
+                            <div class="face-overlay-container" id="left-face-overlay"></div>
+                        </div>
+                        <div class="compare-metrics" id="left-metrics"></div>
+                    </div>
+                    
+                    <!-- Right Photo -->
+                    <div class="compare-pane" id="compare-pane-right">
+                        <div class="compare-pane-header">
+                            <span class="compare-badge badge-purple" id="right-badge">PHOTO B</span>
+                            <span class="compare-score" id="right-score">Score: 0</span>
+                        </div>
+                        <div class="compare-image-wrap">
+                            <img src="" alt="Photo B" id="right-img">
+                            <div class="face-overlay-container" id="right-face-overlay"></div>
+                        </div>
+                        <div class="compare-metrics" id="right-metrics"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected Photos Modal -->
+        <div class="modal hidden" id="selected-photos-modal">
+            <div class="modal-backdrop" id="selected-photos-modal-backdrop"></div>
+            <div class="modal-content" style="max-width: 900px;">
+                <div class="modal-header">
+                    <h2>Selected Photos to Keep (<span id="modal-selected-count">0</span>)</h2>
+                    <button class="btn-close" id="btn-close-selected-modal">×</button>
+                </div>
+                <div class="modal-body" style="grid-template-columns: 1fr; padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+                    <div class="selected-photos-grid" id="selected-photos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;">
+                        <!-- Selected photos will be rendered dynamically here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Options Modal -->
+        <div class="modal hidden" id="export-modal">
+            <div class="modal-backdrop" id="export-modal-backdrop"></div>
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header" style="padding: 0.85rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                    <h2 style="font-size: 1.05rem;">Export Options</h2>
+                    <button class="btn-close" id="btn-close-export-modal" style="font-size: 1.25rem; line-height: 1;">×</button>
+                </div>
+                <div class="modal-body" style="grid-template-columns: 1fr; padding: 1rem 1.25rem; max-height: 80vh; overflow-y: auto;">
+                    <div class="export-panel-inner" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div class="export-header-pane" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.65rem; margin-bottom: 0.25rem;">
+                            <p class="export-count-text" style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.2rem; font-weight: 500;">
+                                <strong style="color: var(--cyan);"><span id="export-photo-count">0</span></strong> optimized photos chosen.
+                            </p>
+                            <p class="export-sub" style="font-size: 0.72rem; color: var(--text-muted);">
+                                <span id="export-duplicate-count">0</span> duplicates marked for archive/discard.
+                            </p>
+                        </div>
+                        
+                        <div class="export-settings-panel" id="advanced-export-options" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                            <!-- Destination Folder Path -->
+                            <div class="setting-group" id="export-dir-group" style="margin-bottom: 0; padding-bottom: 0.65rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                <div class="setting-header" style="margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">
+                                    <label for="export-dir-input">Destination Folder</label>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="text" id="export-dir-input" class="input-text" style="padding: 0.4rem 0.5rem; font-size: 0.8rem; border-radius: 6px; height: 32px; flex: 1; min-width: 0;" placeholder="C:\path\to\export_folder">
+                                </div>
+                                <span class="slider-helper tooltip-helper" style="margin-top: 0.3rem; font-size: 0.65rem; line-height: 1.2;">
+                                    Processed photos will be saved directly into this local folder.
+                                </span>
+                            </div>
+                            
+                            <!-- Resolution Resizing -->
+                            <div class="setting-group" style="margin-bottom: 0; padding-bottom: 0.65rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                <div class="setting-header" style="margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">
+                                    <label for="export-resize-preset">Resize Resolution</label>
+                                </div>
+                                <select id="export-resize-preset" class="input-select" style="padding: 0.45rem 2rem 0.45rem 0.75rem; font-size: 0.8rem; border-radius: 6px; background-position: right 0.75rem center; background-size: 11px; height: 32px;">
+                                    <option value="original">Original Dimensions</option>
+                                    <option value="upscale-2x">AI Upscale 2x (Super Resolution)</option>
+                                    <option value="scale-75">75% Original Scale</option>
+                                    <option value="scale-50">50% Original Scale</option>
+                                    <option value="1080p">Web-Ready (1080px)</option>
+                                    <option value="4k">Ultra-HD 4K (3840px)</option>
+                                    <option value="custom">Custom Dimensions</option>
+                                </select>
+                                
+                                <div class="custom-dims-inputs-wrap hidden" id="custom-dims-container" style="margin-top: 0.5rem;">
+                                    <div class="custom-dims-inputs" style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="number" id="custom-w" placeholder="Width" min="1" class="input-text" style="padding: 0.4rem 0.5rem; font-size: 0.8rem; border-radius: 6px; height: 32px;">
+                                        <span style="color: var(--text-muted); font-size: 0.8rem;">×</span>
+                                        <input type="number" id="custom-h" placeholder="Height" min="1" class="input-text" style="padding: 0.4rem 0.5rem; font-size: 0.8rem; border-radius: 6px; height: 32px;">
+                                    </div>
+                                </div>
+                            </div>
+                             
+                            <!-- PPI / DPI -->
+                            <div class="setting-group" style="margin-bottom: 0; padding-bottom: 0.65rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                <div class="setting-header" style="margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">
+                                    <label for="export-ppi">Target Density (PPI)</label>
+                                </div>
+                                <select id="export-ppi" class="input-select" style="padding: 0.45rem 2rem 0.45rem 0.75rem; font-size: 0.8rem; border-radius: 6px; background-position: right 0.75rem center; background-size: 11px; height: 32px;">
+                                    <option value="72">72 PPI (Web)</option>
+                                    <option value="150">150 PPI (Draft)</option>
+                                    <option value="300" selected>300 PPI (Print)</option>
+                                </select>
+                            </div>
+                                 <!-- Format -->
+                            <div class="setting-group" style="margin-bottom: 0; padding-bottom: 0.65rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                <div class="setting-header" style="margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">
+                                    <label for="export-format">Output Format</label>
+                                </div>
+                                <select id="export-format" class="input-select" style="padding: 0.45rem 2rem 0.45rem 0.75rem; font-size: 0.8rem; border-radius: 6px; background-position: right 0.75rem center; background-size: 11px; height: 32px;">
+                                    <option value="original">Match Original</option>
+                                    <option value="JPEG">JPEG (.jpg)</option>
+                                    <option value="PNG">PNG (.png)</option>
+                                    <option value="WEBP">WEBP (.webp)</option>
+                                </select>
+                            </div>
+
+                            <!-- Quality Slider -->
+                            <div class="setting-group" id="export-quality-group" style="margin-bottom: 0; padding-bottom: 0.65rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                <div class="setting-header" style="margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                                    <label for="export-quality-slider">Export Quality</label>
+                                    <span id="export-quality-value" style="color: var(--cyan); font-weight: 600; font-size: 0.8rem;">95%</span>
+                                </div>
+                                <div id="export-quality-slider-container" style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    <input type="range" id="export-quality-slider" min="50" max="100" value="95" class="slider" style="height: 4px; margin-top: 0.25rem;">
+                                    <span id="export-quality-preset-desc" style="font-size: 0.68rem; color: var(--text-muted); font-weight: 500; margin-top: 0.1rem;">High Quality (95)</span>
+                                </div>
+                                <span id="export-png-warning" class="slider-helper hidden" style="color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; margin-top: 0.3rem;">
+                                    Lossless format – quality setting not applicable.
+                                </span>
+                            </div>                     </div>
+                             
+                            <!-- Advanced Enhancements -->
+                            <div class="setting-group" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+                                <div class="setting-header" style="margin-bottom: 0.3rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">
+                                    <label>Advanced CV Enhancements</label>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; cursor: pointer; color: var(--text-secondary); user-select: none;">
+                                        <input type="checkbox" id="export-lighting-correction" style="accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;">
+                                        Smart Lighting (CLAHE/Gamma)
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; cursor: pointer; color: var(--text-secondary); user-select: none;">
+                                        <input type="checkbox" id="export-color-adjustment" style="accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;">
+                                        Auto-Adjust Colors (HSV)
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; cursor: pointer; color: var(--text-secondary); user-select: none;">
+                                        <input type="checkbox" id="export-detail-sharpening" style="accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;" checked>
+                                        AI Detail Sharpening (Unsharp Mask)
+                                    </label>
+                                </div>
+                            </div>
+ 
+                        <div class="export-actions-panel" id="export-actions-panel" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem;">
+                            <!-- Standard upload actions -->
+                            <button class="btn btn-secondary btn-block" id="btn-delete-discarded" style="padding: 0.45rem 1rem; font-size: 0.8rem; border-radius: 6px; height: 34px; min-height: unset; display: flex; align-items: center; justify-content: center;"><span>Delete Discarded (<span id="btn-delete-count">0</span>)</span></button>
+                            <!-- Local scanning actions -->
+                            <button class="btn btn-secondary btn-block hidden" id="btn-backup-local" style="padding: 0.45rem 1rem; font-size: 0.8rem; border-radius: 6px; height: 34px; min-height: unset; display: flex; align-items: center; justify-content: center;"><span>Archive In-Place (<span id="btn-backup-count">0</span>)</span></button>
+                            <button class="btn btn-gradient btn-block" id="btn-download-zip" style="padding: 0.45rem 1rem; font-size: 0.8rem; border-radius: 6px; height: 34px; min-height: unset; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon" style="width: 14px; height: 14px; margin-right: 0.35rem;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span id="btn-download-zip-text">Export Photos</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Success Section -->
+                        <div id="export-success-section" class="hidden" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem;">
+                            <div style="background: rgba(50, 215, 75, 0.1); border: 1px solid rgba(50, 215, 75, 0.2); border-radius: 6px; padding: 0.75rem; color: var(--green); font-size: 0.78rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                                <span style="font-weight: 600;">✓ Operation Completed!</span>
+                                <span style="color: var(--text-secondary); font-size: 0.7rem; word-break: break-all;" id="export-success-msg">Photos processed successfully.</span>
+                            </div>
+                            <button class="btn btn-primary btn-block" id="btn-open-export-dir" style="padding: 0.45rem 1rem; font-size: 0.8rem; border-radius: 6px; height: 34px; min-height: unset; display: flex; align-items: center; justify-content: center;">
+                                📂 Open Folder in Explorer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <!-- About Modal -->
+    <div class="modal hidden" id="about-modal" style="z-index: 10006;">
+        <div class="modal-backdrop" id="about-modal-backdrop"></div>
+        <div class="modal-content" style="max-width: 440px; background: #0B0B12; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 1.5rem; border-radius: 12px; position: relative;">
+            <button class="btn-close" id="btn-close-about-modal" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--text-secondary); font-size: 1.25rem; cursor: pointer;">×</button>
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding-top: 0.5rem;">
+                <div style="width: 60px; height: 60px; color: var(--cyan);">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" style="width: 100%; height: 100%;">
+                      <defs>
+                        <mask id="aboutLogoMask">
+                          <rect width="100" height="100" fill="#FFFFFF" />
+                          <polygon points="50,50 99.8,45.6 95.3,28.9" fill="#000000" />
+                          <line x1="50" y1="50" x2="95" y2="95" stroke="#000000" stroke-width="14.5" stroke-linecap="butt" />
+                        </mask>
+                      </defs>
+                      <circle cx="50" cy="50" r="34" stroke="#FFFFFF" stroke-width="10.5" mask="url(#aboutLogoMask)" fill="none" />
+                      <circle cx="50" cy="50" r="18" stroke="#5B4BFF" stroke-width="9.5" fill="none" />
+                      <line x1="58" y1="58" x2="77" y2="77" stroke="#5B4BFF" stroke-width="9.5" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #FFFFFF; font-family: 'Outfit', sans-serif;">QuantileCull V1.1</h2>
+                    <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary); font-family: 'Inter', sans-serif;">AI-Powered Photo Culling for Event Professionals</p>
+                </div>
+                <div style="height: 1px; background: rgba(255,255,255,0.08); width: 100%; margin: 0.5rem 0;"></div>
+                <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; text-align: left; width: 100%; display: flex; flex-direction: column; gap: 0.5rem; font-family: 'Inter', sans-serif;">
+                    <div><strong>Developer Location:</strong> Bangalore, India</div>
+                    <div><strong>Copyright:</strong> © 2026 QuantileCull. All Rights Reserved.</div>
+                    <div><strong>Website:</strong> <a href="https://quantilecull.com" target="_blank" style="color: var(--cyan); text-decoration: none; font-weight: 500;">https://quantilecull.com</a></div>
+                    <div><strong>Support:</strong> <a href="mailto:support@quantilecull.com" style="color: var(--cyan); text-decoration: none; font-weight: 500;">support@quantilecull.com</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Licensing Overlays -->
+    <div id="activation-overlay" class="licensing-overlay hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 12, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); overflow-y: auto;">
+        <div class="activation-card" style="position: relative; background: rgba(25, 25, 30, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 2rem; width: 500px; max-width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.5); box-sizing: border-box; margin: 2rem 0;">
+            <button id="btn-close-activation" style="position: absolute; top: 0.75rem; right: 1rem; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; font-weight: 300; line-height: 1;">&times;</button>
+            <div class="activation-logo" style="margin-bottom: 1rem; display: flex; justify-content: center;">
+                <div style="background: var(--cyan); color: #000; width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 26px; height: 26px;">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+            </div>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff; text-align: center;">Register & Activate QuantileCull</h2>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem; text-align: center;">Welcome to QuantileCull. Please register your details and enter your Trial License Key to unlock the application.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: left; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.72rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">Full Name *</label>
+                    <input type="text" id="activation-name-input" placeholder="John Doe" required style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; padding: 0 0.75rem; font-size: 0.88rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.72rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">Email Address *</label>
+                    <input type="email" id="activation-email-input" placeholder="john@example.com" required style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; padding: 0 0.75rem; font-size: 0.88rem; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: left; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.72rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">Company / Studio</label>
+                    <input type="text" id="activation-company-input" placeholder="Studio Name" style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; padding: 0 0.75rem; font-size: 0.88rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.72rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">Country</label>
+                    <input type="text" id="activation-country-input" placeholder="e.g. USA, UK" style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; padding: 0 0.75rem; font-size: 0.88rem; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <div style="text-align: left; margin-bottom: 1.25rem;">
+                <label style="display: block; font-size: 0.72rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">Photography Type *</label>
+                <select id="activation-type-input" style="width: 100%; height: 38px; background: rgba(25, 25, 30, 0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; padding: 0 0.75rem; font-size: 0.88rem; box-sizing: border-box; cursor: pointer;">
+                    <option value="Conference">Conference Photography</option>
+                    <option value="Event">Corporate Event Photography</option>
+                    <option value="Wedding">Wedding Photography</option>
+                    <option value="Sports">Sports Photography</option>
+                    <option value="Media">Media / Press Editorial</option>
+                    <option value="Corporate">Corporate / Headshots</option>
+                </select>
+            </div>
+
+            <div style="text-align: left; margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.72rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">Trial License Key *</label>
+                <input type="text" id="activation-key-input" placeholder="QC-TRIAL-XXXX-XXXX-XXXX" style="width: 100%; height: 40px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; color: #fff; padding: 0 0.75rem; font-family: monospace; font-size: 0.95rem; box-sizing: border-box; text-transform: uppercase; transition: all 0.2s;" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'">
+            </div>
+
+            <details style="display: none;">
+                <summary style="font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; user-select: none;">Advanced Server Settings</summary>
+                <div style="margin-top: 0.5rem;">
+                    <label style="display: block; font-size: 0.68rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.25rem; text-transform: uppercase;">Server Endpoint</label>
+                    <input type="text" id="activation-server-input" value="https://quantilecull.com/api" style="width: 100%; height: 34px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: var(--text-secondary); padding: 0 0.75rem; font-size: 0.8rem; box-sizing: border-box;">
+                </div>
+            </details>
+            
+            <button id="btn-activate-submit" class="btn btn-gradient btn-block" style="height: 42px; font-size: 0.9rem; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 100%;">
+                Activate Now
+            </button>
+            <div id="activation-error-msg" style="color: #ff453a; font-size: 0.8rem; margin-top: 1rem; text-align: center;" class="hidden"></div>
+        </div>
+    </div>
+
+    <div id="expired-overlay" class="licensing-overlay hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 12, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+        <div class="activation-card" style="position: relative; background: rgba(25, 25, 30, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 2.5rem; width: 450px; max-width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <button id="btn-close-expired" style="position: absolute; top: 0.75rem; right: 1rem; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; font-weight: 300; line-height: 1;">&times;</button>
+            <div class="activation-logo" style="margin-bottom: 1.5rem; display: flex; justify-content: center;">
+                <div style="background: #ff453a; color: #fff; width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(255, 69, 58, 0.3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 28px; height: 28px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+            </div>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.6rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff;">Trial Ended</h2>
+            <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 2rem;">Your 30-day evaluation period for QuantileCull has concluded. Contact QuantileCull for an Extended Evaluation License or enter a new license key below.</p>
+            
+            <div style="text-align: left; margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">New License Key</label>
+                <input type="text" id="expired-key-input" placeholder="QC-XXXX-XXXX-XXXX" style="width: 100%; height: 42px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; padding: 0 0.85rem; font-family: monospace; font-size: 1rem; box-sizing: border-box;">
+            </div>
+            
+            <button id="btn-reactivate-submit" class="btn btn-gradient btn-block" style="height: 42px; font-size: 0.9rem; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 100%;">
+                Re-Activate License
+            </button>
+            <div id="expired-error-msg" style="color: #ff453a; font-size: 0.8rem; margin-top: 1rem; text-align: center;" class="hidden"></div>
+            <p style="margin-top: 1.5rem; font-size: 0.78rem; color: var(--text-muted);">Need assistance? Contact support at <a href="mailto:support@quantilecull.com" style="color: var(--cyan); text-decoration: none;">support@quantilecull.com</a></p>
+        </div>
+    </div>
+
+
+    <!-- Clock Tampering Notification Bar -->
+    <div id="tamper-warning-bar" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 36px; background: #ff453a; color: #fff; z-index: 99999; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.3); box-sizing: border-box; padding: 0 1rem; gap: 8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 16px; height: 16px; flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>License Verification Failed (System Clock Rollback Detected) — Application entered Read-Only Mode.</span>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 20000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div class="modal-card" style="background: rgba(25, 25, 30, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 2rem; width: 500px; max-width: 90%; position: relative; box-shadow: 0 15px 30px rgba(0,0,0,0.4); box-sizing: border-box;">
+            <button id="btn-close-feedback" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; line-height: 1;">×</button>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff; text-align: left; display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px; color: var(--cyan);">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Send Feedback
+            </h2>
+            <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1.5rem; text-align: left;">Help us shape the V1.1 release of QuantileCull. Your feedback will be recorded in our trial logs.</p>
+            
+            <form id="feedback-form" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+                <div>
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Full Name</label>
+                    <input type="text" id="feedback-name" required placeholder="Your Name" style="width: 100%; height: 36px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; padding: 0 0.65rem; font-size: 0.85rem; box-sizing: border-box;">
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Company / Studio Name</label>
+                    <input type="text" id="feedback-company" placeholder="e.g. Skyline Photography" style="width: 100%; height: 36px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; padding: 0 0.65rem; font-size: 0.85rem; box-sizing: border-box;">
+                </div>
+                
+                <div style="display: flex; gap: 1rem; width: 100%;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Event Type Checked</label>
+                        <select id="feedback-event-type" style="width: 100%; height: 36px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; padding: 0 0.5rem; font-size: 0.85rem; box-sizing: border-box;">
+                            <option value="Conference">Conference</option>
+                            <option value="Wedding">Wedding</option>
+                            <option value="Expo">Expo / Trade Show</option>
+                            <option value="Networking">Networking Event</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Personal">Personal Shoot</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Satisfaction Rating</label>
+                        <select id="feedback-rating" style="width: 100%; height: 36px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; padding: 0 0.5rem; font-size: 0.85rem; box-sizing: border-box;">
+                            <option value="5">★★★★★ - Excellent</option>
+                            <option value="4">★★★★☆ - Very Good</option>
+                            <option value="3">★★★☆☆ - Good</option>
+                            <option value="2">★★☆☆☆ - Fair</option>
+                            <option value="1">★☆☆☆☆ - Poor</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Feature Requests & Comments</label>
+                    <textarea id="feedback-comments" rows="3" placeholder="What features would you like to see next? Any accuracy issues?" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; padding: 0.5rem 0.65rem; font-size: 0.85rem; box-sizing: border-box; resize: vertical;"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-gradient btn-block" style="height: 38px; font-size: 0.85rem; font-weight: 600; border-radius: 6px; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    Submit Feedback
+                </button>
+            </form>
+            <div id="feedback-success-msg" class="hidden" style="margin-top: 1rem; color: var(--green); font-size: 0.82rem; font-weight: 600; text-align: center;">✓ Feedback submitted successfully! Thank you.</div>
+            <div id="feedback-error-msg" class="hidden" style="margin-top: 1rem; color: #ff453a; font-size: 0.82rem; text-align: center;"></div>
+        </div>
+    </div>
+
+    <!-- Expired Notification Bar -->
+    <div id="expired-warning-bar" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 36px; background: #ff9f0a; color: #000; z-index: 99999; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.3); box-sizing: border-box; padding: 0 1rem; gap: 8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 16px; height: 16px; flex-shrink: 0; color: #000;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>Trial Ended. Contact QuantileCull for an Extended Evaluation License. &nbsp;&nbsp;<a id="lnk-reactivate" href="#" style="color: #000; text-decoration: underline; font-weight: 700;">Renew License</a></span>
+    </div>
+
+    <!-- Feature Request Modal -->
+    <div id="feature-request-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 20000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div class="modal-card" style="background: rgba(25, 25, 30, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 2rem; width: 500px; max-width: 90%; position: relative; box-shadow: 0 15px 30px rgba(0,0,0,0.4); box-sizing: border-box;">
+            <button id="btn-close-feature-modal" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; line-height: 1;">×</button>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff; text-align: left; display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px; color: var(--cyan);">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Request Feature
+            </h2>
+            <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1.5rem; text-align: left;">Suggest new tools or workflow changes. Pilot submissions help shape the V2 release.</p>
+            
+            <form id="feature-request-form" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+                <div>
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Proposed Feature / Change *</label>
+                    <input type="text" id="feature-title" required placeholder="Describe the feature briefly" style="width: 100%; height: 36px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; padding: 0 0.65rem; font-size: 0.85rem; box-sizing: border-box;">
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Priority Level</label>
+                    <select id="feature-priority" style="width: 100%; height: 36px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; padding: 0 0.5rem; font-size: 0.85rem; box-sizing: border-box;">
+                        <option value="Low">Low - Nice to have</option>
+                        <option value="Medium" selected>Medium - Would improve workflow</option>
+                        <option value="High">High - Essential addition</option>
+                        <option value="Critical">Critical - Cannot work without it</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem;">Workflow Impact / Rationale *</label>
+                    <textarea id="feature-impact" required rows="3" placeholder="How will this feature save you time or help your photography team?" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; padding: 0.5rem 0.65rem; font-size: 0.85rem; box-sizing: border-box; resize: vertical;"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-gradient btn-block" style="height: 38px; font-size: 0.85rem; font-weight: 600; border-radius: 6px; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    Submit Feature Request
+                </button>
+            </form>
+            <div id="feature-success-msg" class="hidden" style="margin-top: 1rem; color: var(--green); font-size: 0.82rem; font-weight: 600; text-align: center;">✓ Feature request submitted! Thank you.</div>
+            <div id="feature-error-msg" class="hidden" style="margin-top: 1rem; color: #ff453a; font-size: 0.82rem; text-align: center;"></div>
+        </div>
+    </div>
+
+    <!-- Crash Report Upload Modal -->
+    <div id="crash-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20005; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div class="modal-card" style="background: rgba(25, 25, 30, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 2rem; width: 450px; max-width: 90%; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.5); box-sizing: border-box;">
+            <div style="background: rgba(255, 69, 58, 0.1); color: var(--red); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; box-shadow: 0 0 15px rgba(255, 69, 58, 0.15);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 24px; height: 24px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; color: #fff;">Unexpected Crash Detected</h2>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.5;" id="crash-modal-msg">QuantileCull encountered a critical error and closed unexpectedly during your last session.</p>
+            
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-crash-ignore" style="height: 38px; flex: 1;">Ignore</button>
+                <button class="btn btn-gradient" id="btn-crash-upload" style="height: 38px; flex: 1; background: linear-gradient(135deg, var(--red) 0%, #ff9f0a 100%);">Send Crash Report</button>
+            </div>
+        </div>
+    </div>
+
+
+<script src="static/js/app.js?v=15"></script>
+</body>
+</html>

@@ -70,7 +70,24 @@ def _get_cached_analysis(path, current_mtime):
     try:
         xmp_path = get_xmp_path(path)
         xmp_mtime = os.path.getmtime(xmp_path) if os.path.exists(xmp_path) else 0.0
-        return cache_engine.get_cached_item(path, current_mtime, xmp_mtime)
+        cached = cache_engine.get_cached_item(path, current_mtime, xmp_mtime)
+        if cached and cached.get('metrics'):
+            faces = cache_engine.get_face_embeddings(path)
+            # Reconstruct legacy keys for compatibility
+            for f in faces:
+                bx, by, bw, bh = f["bbox"]
+                f["x"] = bx
+                f["y"] = by
+                f["w"] = bw
+                f["h"] = bh
+                f["sharpness"] = f["quality"]["sharpness"]
+                f["face_exposure"] = f["quality"]["exposure"]
+                f["eye_openness"] = f.get("landmarks", {}).get("eye_openness", 100.0) # Fallback if missing
+                f["camera_facing"] = f.get("orientation", {}).get("pitch", 0.0) + 90.0
+                f["is_blink"] = f.get("landmarks", {}).get("is_blink", False)
+            cached['metrics']['faces'] = faces
+            cached['metrics']['faces_detected'] = len(faces)
+        return cached
     except Exception as e:
         print(f"Failed to fetch cache from engine: {e}")
         return None
@@ -81,7 +98,12 @@ def _set_cached_analysis(path, mtime, sha256, phash, ratio, timestamp, metrics):
     try:
         xmp_path = get_xmp_path(path)
         xmp_mtime = os.path.getmtime(xmp_path) if os.path.exists(xmp_path) else 0.0
-        cache_engine.set_cached_item(path, mtime, xmp_mtime, sha256, phash, ratio, timestamp, metrics)
+        
+        metrics_copy = metrics.copy()
+        faces = metrics_copy.pop('faces', [])
+        
+        cache_engine.set_cached_item(path, mtime, xmp_mtime, sha256, phash, ratio, timestamp, metrics_copy)
+        cache_engine.set_face_embeddings(path, faces)
     except Exception as e:
         print(f"Failed to write cache to engine: {e}")
 
@@ -2279,6 +2301,28 @@ def analyze_image_quality(img_path, token=None):
             face_place = (place_x + place_y) / 2.0
             face_placement_scores.append(face_place)
             
+            # Generate face embedding
+            face_crop = img[y1:y2, x1:x2]
+            embedding_list = [0.0] * 512
+            if face_crop.size > 0:
+                try:
+                    from face_embedding_engine import generate_face_embedding
+                    emb = generate_face_embedding(face_crop)
+                    embedding_list = emb.tolist()
+                except Exception as e:
+                    print(f"Face embedding generation failed: {e}")
+
+            try:
+                dy = right_eye_center[1] - left_eye_center[1]
+                dx = right_eye_center[0] - left_eye_center[0]
+                roll = math.degrees(math.atan2(dy, dx)) if dx != 0 else 0.0
+                
+                d_left = math.sqrt((nose[0] - left_eye_center[0])**2 + (nose[1] - left_eye_center[1])**2)
+                d_right = math.sqrt((nose[0] - right_eye_center[0])**2 + (nose[1] - right_eye_center[1])**2)
+                yaw = float(round(math.degrees(math.atan2(d_left - d_right, (d_left + d_right)/2)) * 1.5, 1)) if (d_left + d_right) > 0 else 0.0
+            except Exception:
+                roll, yaw = 0.0, 0.0
+
             face_details.append({
                 "x": int(x), "y": int(y), "w": int(fw), "h": int(fh),
                 "sharpness": float(f_sharp),
@@ -2291,7 +2335,21 @@ def analyze_image_quality(img_path, token=None):
                 "is_blink": bool(is_blink),
                 "left_eye_landmarks": f["left_eye_landmarks"],
                 "right_eye_landmarks": f["right_eye_landmarks"],
-                "face_exposure": float(f_exposure)
+                "face_exposure": float(f_exposure),
+                "bbox": [int(x), int(y), int(fw), int(fh)],
+                "quality": {"sharpness": float(f_sharp), "exposure": float(f_exposure)},
+                "landmarks": {
+                    "left_eye": left_eye_center.tolist() if hasattr(left_eye_center, "tolist") else left_eye_center,
+                    "right_eye": right_eye_center.tolist() if hasattr(right_eye_center, "tolist") else right_eye_center,
+                    "nose_tip": nose.tolist() if hasattr(nose, "tolist") else nose,
+                    "mouth_center": [x + fw * 0.5, y + fh * 0.75]
+                },
+                "orientation": {
+                    "roll": float(round(roll, 1)),
+                    "pitch": float(round(cam_facing - 90.0, 1)),
+                    "yaw": float(round(yaw, 1))
+                },
+                "embedding": embedding_list
             })
             
         if face_details:
@@ -2367,6 +2425,16 @@ def analyze_image_quality(img_path, token=None):
                     f_exposure = round(max(0.0, face_bright_base - face_penalty), 1)
                 face_brightness_scores.append(f_exposure)
                 
+                face_crop = img[y1:y2, x1:x2]
+                embedding_list = [0.0] * 512
+                if face_crop.size > 0:
+                    try:
+                        from face_embedding_engine import generate_face_embedding
+                        emb = generate_face_embedding(face_crop)
+                        embedding_list = emb.tolist()
+                    except Exception as e:
+                        print(f"Face embedding generation failed: {e}")
+
                 face_details.append({
                     "x": int(x), "y": int(y), "w": int(fw), "h": int(fh),
                     "sharpness": float(f_sharp),
@@ -2379,7 +2447,21 @@ def analyze_image_quality(img_path, token=None):
                     "is_blink": bool(is_blink),
                     "left_eye_landmarks": [],
                     "right_eye_landmarks": [],
-                    "face_exposure": float(f_exposure)
+                    "face_exposure": float(f_exposure),
+                    "bbox": [int(x), int(y), int(fw), int(fh)],
+                    "quality": {"sharpness": float(f_sharp), "exposure": float(f_exposure)},
+                    "landmarks": {
+                        "left_eye": [x + fw * 0.35, y + fh * 0.4],
+                        "right_eye": [x + fw * 0.65, y + fh * 0.4],
+                        "nose_tip": [x + fw * 0.5, y + fh * 0.55],
+                        "mouth_center": [x + fw * 0.5, y + fh * 0.75]
+                    },
+                    "orientation": {
+                        "roll": 0.0,
+                        "pitch": float(round(cam_facing - 90.0, 1)),
+                        "yaw": 0.0
+                    },
+                    "embedding": embedding_list
                 })
                 
             if face_details:
