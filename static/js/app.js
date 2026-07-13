@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hero Run Analysis Button
         const btnLaunchpadAnalyze = document.getElementById('btn-launchpad-analyze');
         if (btnLaunchpadAnalyze) {
-            btnLaunchpadAnalyze.addEventListener('click', runAnalysis);
+            btnLaunchpadAnalyze.addEventListener('click', () => runAnalysis());
         }
 
         // Run once on load to ensure proper height
@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnWizardNext.addEventListener('click', () => navigateWizard(1));
 
     // Buttons
-    btnAnalyze.addEventListener('click', runAnalysis);
+    btnAnalyze.addEventListener('click', () => runAnalysis());
     btnClearAll.addEventListener('click', resetAllUploads);
     btnDeleteDiscarded.addEventListener('click', deleteDiscardedPhotos);
     btnBackupLocal.addEventListener('click', backupLocalDuplicates);
