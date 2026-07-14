@@ -25,9 +25,11 @@ a = Analysis(
     optimize=0,
 )
 
-# 1. Filter out unused Mediapipe .tflite model files (pose, hand, iris, palm, selfie, holistic)
+# 1. Filter out unused Mediapipe .tflite model files and exclude setup executables
 filtered_datas = []
 for dest, source, type_ in a.datas:
+    if source.lower().endswith('.exe'):
+        continue
     if 'mediapipe' in source.lower() and 'modules' in source.lower() and source.endswith('.tflite'):
         if not any(x in source.lower() for x in ['face_detection', 'face_landmark', 'face_geometry']):
             continue
