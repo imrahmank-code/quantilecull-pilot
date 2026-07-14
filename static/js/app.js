@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localPathInput.style.height = (localPathInput.scrollHeight) + 'px';
         };
 
-        const updateLaunchpadInfo = async (path) => {
+        const updateLaunchpadInfo = async (path, silent = false) => {
             const heroInitial = document.getElementById('hero-initial-state');
             const heroSelected = document.getElementById('hero-selected-state');
             const lpFolderName = document.getElementById('launchpad-folder-name');
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (heroInitial) heroInitial.classList.remove('hidden');
                         if (heroSelected) heroSelected.classList.add('hidden');
                         btnAnalyze.disabled = true;
-                        if (info && info.error) {
+                        if (info && info.error && !silent) {
                             alert("Folder rejected: " + info.error);
                         }
                     }
@@ -377,22 +377,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (heroInitial) heroInitial.classList.remove('hidden');
                     if (heroSelected) heroSelected.classList.add('hidden');
                     btnAnalyze.disabled = true;
-                    alert("Folder rejected: " + err.message);
+                    if (!silent) {
+                        alert("Folder rejected: " + err.message);
+                    }
                 }
             } else {
                 // If api not loaded yet, wait for pywebviewready
                 window.addEventListener('pywebviewready', () => {
-                    updateLaunchpadInfo(path);
+                    updateLaunchpadInfo(path, silent);
                 }, { once: true });
             }
         };
 
-        const setFolderPath = (path) => {
+        const setFolderPath = (path, silent = false) => {
             if (path) {
                 localPathInput.value = path;
                 btnAnalyze.disabled = false;
                 setTimeout(adjustHeight, 0);
-                updateLaunchpadInfo(path);
+                updateLaunchpadInfo(path, silent);
             }
         };
 
@@ -401,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.pywebview.api.get_default_path()
                     .then(path => {
                         if (path) {
-                            setFolderPath(path);
+                            setFolderPath(path, true);
                         }
                     })
                     .catch(err => console.log('Failed to fetch default path via API:', err));
@@ -409,14 +411,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             btnAnalyze.disabled = localPathInput.value.trim().length === 0;
             adjustHeight();
-            updateLaunchpadInfo(localPathInput.value);
+            updateLaunchpadInfo(localPathInput.value, true);
         }
 
         localPathInput.addEventListener('input', (e) => {
             const path = e.target.value;
             btnAnalyze.disabled = path.trim().length === 0;
             adjustHeight();
-            updateLaunchpadInfo(path);
+            updateLaunchpadInfo(path, true);
         });
 
         // Advanced Options Accordion Toggle
