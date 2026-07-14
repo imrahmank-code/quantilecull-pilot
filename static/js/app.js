@@ -9,6 +9,7 @@ let currentWizardIndex = 0;
 let scannedDir = ''; // Scanned directory path for local mode
 let activeJobId = null; // Track currently running backend analysis/export job
 let isLicenseActive = false; // License state tracking
+let licenseStatus = 'unactivated';
 let currentCullMode = 'smart_cull'; // Store the active scan job's culling mode
 
 // Destructive action confirmation callback registry
@@ -971,8 +972,7 @@ function resetAllUploads() {
 // Run CV analysis (Supports Upload vs Local scanning)
 function runAnalysis(resume = false) {
     if (!isLicenseActive) {
-        const expiredOverlay = document.getElementById('expired-overlay');
-        if (expiredOverlay) expiredOverlay.classList.remove('hidden');
+        showLicensingOverlay();
         return;
     }
     loadingOverlay.classList.remove('hidden');
@@ -1593,8 +1593,7 @@ function updateStatsAndExportBar() {
 // Delete Selected uploads (Used in permanent deletion mode)
 function deleteDiscardedPhotos() {
     if (!isLicenseActive) {
-        const expiredOverlay = document.getElementById('expired-overlay');
-        if (expiredOverlay) expiredOverlay.classList.remove('hidden');
+        showLicensingOverlay();
         return;
     }
     if (discardedFiles.size === 0) return;
@@ -1669,8 +1668,7 @@ function deleteDiscardedPhotos() {
 // In-place local move (Used in local folder mode)
 function backupLocalDuplicates() {
     if (!isLicenseActive) {
-        const expiredOverlay = document.getElementById('expired-overlay');
-        if (expiredOverlay) expiredOverlay.classList.remove('hidden');
+        showLicensingOverlay();
         return;
     }
     if (discardedFiles.size === 0) return;
@@ -2117,8 +2115,7 @@ function closeCompareModal() {
 // Perform blink correction (seamless eye swap) via API
 function fixBlink(groupId, targetPath, sourcePath) {
     if (!isLicenseActive) {
-        const expiredOverlay = document.getElementById('expired-overlay');
-        if (expiredOverlay) expiredOverlay.classList.remove('hidden');
+        showLicensingOverlay();
         return;
     }
     loadingOverlay.classList.remove('hidden');
@@ -2243,8 +2240,7 @@ function closeExportModal() {
 // Export cleaned photos API Trigger
 function exportCleanedPhotos() {
     if (!isLicenseActive) {
-        const expiredOverlay = document.getElementById('expired-overlay');
-        if (expiredOverlay) expiredOverlay.classList.remove('hidden');
+        showLicensingOverlay();
         return;
     }
     if (keptFiles.size === 0) {
@@ -2599,6 +2595,7 @@ function initLicensing() {
             if (trialBadge) trialBadge.classList.add('hidden');
             
             // Handle different states
+            licenseStatus = lic.status;
             if (lic.status === 'active') {
                 isLicenseActive = true;
                 if (trialBadge) {
@@ -2641,6 +2638,16 @@ function initLicensing() {
             }
         })
         .catch(err => console.error('Failed to validate license:', err));
+}
+
+function showLicensingOverlay() {
+    if (licenseStatus === 'unactivated') {
+        const activationOverlay = document.getElementById('activation-overlay');
+        if (activationOverlay) activationOverlay.classList.remove('hidden');
+    } else {
+        const expiredOverlay = document.getElementById('expired-overlay');
+        if (expiredOverlay) expiredOverlay.classList.remove('hidden');
+    }
 }
 
 function disableAppActions(status) {

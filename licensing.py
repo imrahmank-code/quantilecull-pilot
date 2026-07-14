@@ -27,6 +27,12 @@ HMAC_SECRET = b"QuantileCull_HMAC_Secret_2026_$"
 def get_utc_now():
     return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
+def parse_iso_to_naive_utc(iso_str: str) -> datetime.datetime:
+    dt = datetime.datetime.fromisoformat(iso_str)
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return dt
+
 def get_machine_fingerprint():
     guid = ""
     
@@ -119,7 +125,7 @@ class LicenseManager:
         for t_str in (db_time_str, file_time_str):
             if t_str:
                 try:
-                    times.append(datetime.datetime.fromisoformat(t_str))
+                    times.append(parse_iso_to_naive_utc(t_str))
                 except ValueError:
                     pass
         return max(times) if times else None
@@ -243,8 +249,8 @@ class LicenseManager:
             expiry_str = payload.get("expiry_date")
             activation_str = payload.get("activation_date")
             
-            expiry_dt = datetime.datetime.fromisoformat(expiry_str)
-            activation_dt = datetime.datetime.fromisoformat(activation_str)
+            expiry_dt = parse_iso_to_naive_utc(expiry_str)
+            activation_dt = parse_iso_to_naive_utc(activation_str)
             now = get_utc_now()
             
             # Clock tampering detection
