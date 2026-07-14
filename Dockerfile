@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir bottle cryptography psycopg2-binary gunicorn
 # Copy necessary source code files
 COPY licensing.py /app/
 COPY scripts/ /app/scripts/
+COPY static/ /app/static/
 
 # Expose default port (Koyeb/Render will route this dynamically)
 EXPOSE 5005

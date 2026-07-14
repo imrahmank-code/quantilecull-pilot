@@ -433,6 +433,10 @@ def feature_request():
         bottle.response.status = 500
         return {"success": False, "error": str(e)}
 
+@app.route('/static/<filepath:path>')
+def serve_static(filepath):
+    return bottle.static_file(filepath, root=str(WORKSPACE_DIR / "static"))
+
 @app.route('/latest-version', method=['GET'])
 def latest_version():
     host = bottle.request.headers.get('Host', 'localhost:5005')
