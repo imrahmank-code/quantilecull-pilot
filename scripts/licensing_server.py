@@ -442,8 +442,8 @@ def latest_version():
     host = bottle.request.headers.get('Host', 'localhost:5005')
     scheme = 'https' if any(x in host for x in ['onrender.com', 'koyeb.app', 'lhr.life', 'ngrok']) else 'http'
     return {
-        "version": "1.2.1",
-        "download_url": f"{scheme}://{host}/static/QuantileCull_1.2.1_Setup.exe"
+        "version": "1.3.0",
+        "download_url": f"{scheme}://{host}/static/QuantileCull_1.3.0_Setup.exe"
     }
 
 @app.route('/admin', method=['GET'])

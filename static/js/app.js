@@ -1040,6 +1040,9 @@ function runAnalysis(resume = false) {
                 } else if (jobState.status === 'completed') {
                     clearInterval(pollInterval);
                     handleScanResponse(jobState.result);
+                    if (jobState.background_ai) {
+                        pollBackgroundAI(jobId);
+                    }
                 } else if (jobState.status === 'failed') {
                     clearInterval(pollInterval);
                     handleScanError(new Error(jobState.error || "Analysis job failed."));
@@ -1259,6 +1262,7 @@ function renderDuplicateGroups() {
             
             const dupCard = document.createElement('div');
             dupCard.className = `duplicate-sub-card ${isKept ? 'is-kept' : ''} ${photo.is_best ? 'is-ai-pick' : ''}`;
+            dupCard.setAttribute('data-path', photo.filename);
             
             // Selection checkbox (checkmark overlay)
             const checkboxClass = isKept ? 'card-select-checkbox selected' : 'card-select-checkbox';
@@ -1421,6 +1425,86 @@ function renderDuplicateGroups() {
         `;
         groupsFeed.appendChild(uniqueWrapper);
     }
+
+    if (activeJobId) {
+        setupViewportPriorityTracking(activeJobId);
+    }
+}
+
+let viewportObserver = null;
+let visiblePathsSet = new Set();
+let viewportUpdateTimeout = null;
+
+function setupViewportPriorityTracking(jobId) {
+    if (viewportObserver) {
+        viewportObserver.disconnect();
+    }
+    visiblePathsSet.clear();
+    
+    viewportObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const card = entry.target;
+            const path = card.getAttribute('data-path');
+            if (!path) return;
+            
+            if (entry.isIntersecting) {
+                visiblePathsSet.add(path);
+            } else {
+                visiblePathsSet.delete(path);
+            }
+        });
+        
+        clearTimeout(viewportUpdateTimeout);
+        viewportUpdateTimeout = setTimeout(() => {
+            const visiblePaths = Array.from(visiblePathsSet);
+            const nearbyPaths = [];
+            
+            if (window.pywebview && window.pywebview.api && jobId) {
+                window.pywebview.api.update_viewport_priority(jobId, visiblePaths, nearbyPaths);
+            }
+        }, 300);
+    }, {
+        root: null,
+        threshold: 0.1
+    });
+    
+    document.querySelectorAll('.duplicate-sub-card').forEach(card => {
+        viewportObserver.observe(card);
+    });
+}
+
+function pollBackgroundAI(jobId) {
+    const bgAiBadge = document.getElementById('bg-ai-badge');
+    const bgAiBadgeText = document.getElementById('bg-ai-badge-text');
+    if (!bgAiBadge) return;
+    
+    bgAiBadge.classList.remove('hidden');
+    
+    const bgInterval = setInterval(async () => {
+        try {
+            const jobState = await window.pywebview.api.get_job_status(jobId);
+            if (!jobState || !jobState.background_ai) {
+                clearInterval(bgInterval);
+                bgAiBadge.classList.add('hidden');
+                return;
+            }
+            
+            const bg = jobState.background_ai;
+            bgAiBadgeText.textContent = `Indexing Faces: ${bg.progress}/${bg.total}`;
+            
+            if (bg.status === 'completed') {
+                clearInterval(bgInterval);
+                bgAiBadgeText.textContent = "Faces Indexed";
+                setTimeout(() => {
+                    bgAiBadge.classList.add('hidden');
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Error polling background AI:", err);
+            clearInterval(bgInterval);
+            bgAiBadge.classList.add('hidden');
+        }
+    }, 1000);
 }
 
 // Helper to escape slashes/quotes in JS string arguments inside onclick handlers

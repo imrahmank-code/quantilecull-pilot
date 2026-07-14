@@ -472,7 +472,7 @@ def scan_directory_for_images(dir_path):
 #  PHASE 1: HASHING & GROUPING (Parallelized)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _process_single_image_cached(path, token=None):
+def _process_single_image_cached(path, token=None, mode="complete"):
     """Compute pHash + SHA-256 + metadata + quality metrics, using SQLite cache."""
     if token and token.is_cancelled():
         return None
@@ -505,6 +505,11 @@ def _process_single_image_cached(path, token=None):
         )
         cached = None
 
+    cached_sha = None
+    cached_phash = None
+    cached_ratio = None
+    cached_time = None
+
     if cached and cached['metrics'] and cached['metrics'].get("scoring_version", 0) >= 4:
         cached['path'] = path
         metrics = cached['metrics']
@@ -512,6 +517,16 @@ def _process_single_image_cached(path, token=None):
         metrics.setdefault("xmp_label", "")
         metrics.setdefault("xmp_rejected", False)
         metrics.setdefault("xmp_keywords", [])
+        
+        cached_sha = cached.get('sha256')
+        cached_phash = cached.get('phash')
+        cached_ratio = cached.get('ratio')
+        cached_time = cached.get('time')
+        
+        faces_indexed = metrics.get("faces_indexed", False)
+        if mode == "fast_review" or (mode in ("complete", "background_ai") and faces_indexed):
+            cached['metrics']['overall_score'] = calculate_overall_score(cached['metrics'])
+            return cached
         
         # Check if legacy cache is lacking Phase 2 metrics
         phase2_keys = ["stage_presence", "audience_presence", "branding_presence", "hero_candidate", "editorial_decision"]
@@ -552,9 +567,11 @@ def _process_single_image_cached(path, token=None):
                 metrics.setdefault("branding_presence", 0.0)
                 metrics.setdefault("hero_candidate", False)
                 metrics.setdefault("editorial_decision", "KEEP")
-                
-        cached['metrics']['overall_score'] = calculate_overall_score(cached['metrics'])
-        return cached
+        # Only return cached if it satisfies the requested mode
+        faces_indexed = metrics.get("faces_indexed", False)
+        if mode == "fast_review" or (mode in ("complete", "background_ai") and faces_indexed):
+            cached['metrics']['overall_score'] = calculate_overall_score(cached['metrics'])
+            return cached
 
     result = {'path': path, 'phash': None, 'sha256': None, 'ratio': 1.0, 'time': datetime.datetime.min, 'metrics': None}
     
@@ -563,63 +580,74 @@ def _process_single_image_cached(path, token=None):
             return None
         try:
             # Stage: EMBEDDING (hashing)
-            try:
-                sha = _sha256_file(path)
-                if sha is None:
-                    raise OSError(22, "File is empty or unreadable")
-                result['sha256'] = sha
-            except Exception as e:
-                tb_str = traceback.format_exc()
-                record_pipeline_failure(
-                    path,
-                    "LOAD_FAILURE" if isinstance(e, (OSError, IOError)) else "EMBEDDING_FAILURE",
-                    f"SHA-256 generation failed: {e}",
-                    tb_str,
-                    threading.current_thread().name,
-                    "EMBEDDING"
-                )
-                raise
+            if cached_sha:
+                result['sha256'] = cached_sha
+            else:
+                try:
+                    sha = _sha256_file(path)
+                    if sha is None:
+                        raise OSError(22, "File is empty or unreadable")
+                    result['sha256'] = sha
+                except Exception as e:
+                    tb_str = traceback.format_exc()
+                    record_pipeline_failure(
+                        path,
+                        "LOAD_FAILURE" if isinstance(e, (OSError, IOError)) else "EMBEDDING_FAILURE",
+                        f"SHA-256 generation failed: {e}",
+                        tb_str,
+                        threading.current_thread().name,
+                        "EMBEDDING"
+                    )
+                    raise
 
-            try:
-                from raw_engine import is_raw_file
-                if is_raw_file(path):
-                    from preview_engine import extract_raw_preview
-                    from io import BytesIO
-                    preview_bytes = extract_raw_preview(path)
-                    if preview_bytes:
-                        with Image.open(BytesIO(preview_bytes)) as img:
+            if cached_phash and cached_ratio:
+                result['phash'] = cached_phash
+                result['ratio'] = cached_ratio
+            else:
+                try:
+                    from raw_engine import is_raw_file
+                    if is_raw_file(path):
+                        from preview_engine import extract_raw_preview
+                        from io import BytesIO
+                        preview_bytes = extract_raw_preview(path)
+                        if preview_bytes:
+                            with Image.open(BytesIO(preview_bytes)) as img:
+                                result['phash'] = imagehash.phash(img)
+                                w, h = img.size
+                                result['ratio'] = max(w, h) / min(w, h) if min(w, h) > 0 else 1.0
+                        else:
+                            raise ValueError("Failed to extract preview bytes for RAW phash")
+                    else:
+                        with Image.open(path) as img:
                             result['phash'] = imagehash.phash(img)
                             w, h = img.size
                             result['ratio'] = max(w, h) / min(w, h) if min(w, h) > 0 else 1.0
-                    else:
-                        raise ValueError("Failed to extract preview bytes for RAW phash")
-                else:
-                    with Image.open(path) as img:
-                        result['phash'] = imagehash.phash(img)
-                        w, h = img.size
-                        result['ratio'] = max(w, h) / min(w, h) if min(w, h) > 0 else 1.0
-            except Exception as e:
-                tb_str = traceback.format_exc()
-                record_pipeline_failure(
-                    path,
-                    "LOAD_FAILURE" if isinstance(e, (OSError, IOError)) else "EMBEDDING_FAILURE",
-                    f"pHash generation failed: {e}",
-                    tb_str,
-                    threading.current_thread().name,
-                    "EMBEDDING"
-                )
-                raise
+                except Exception as e:
+                    tb_str = traceback.format_exc()
+                    record_pipeline_failure(
+                        path,
+                        "LOAD_FAILURE" if isinstance(e, (OSError, IOError)) else "EMBEDDING_FAILURE",
+                        f"pHash generation failed: {e}",
+                        tb_str,
+                        threading.current_thread().name,
+                        "EMBEDDING"
+                    )
+                    raise
 
-            try:
-                result['time'] = get_image_time(path)
-            except Exception:
-                pass
+            if cached_time:
+                result['time'] = cached_time
+            else:
+                try:
+                    result['time'] = get_image_time(path)
+                except Exception:
+                    pass
             
             # Stage: FEATURE_EXTRACTION (quality metrics)
             if token and token.is_cancelled():
                 return None
             try:
-                result['metrics'] = analyze_image_quality(path, token=token)
+                detect_faces_bool = (mode in ("complete", "background_ai"))
+                result['metrics'] = analyze_image_quality(path, token=token, detect_faces=detect_faces_bool)
                 if result['metrics'] is None:
                     raise ValueError("analyze_image_quality returned None")
                 
@@ -888,7 +916,7 @@ def _group_duplicates(hash_results, threshold):
     return groups
 
 
-def process_and_group_generator(image_paths, threshold=12, token=None, save_checkpoint_fn=None, logger=None, run_context=None, processed_paths=None):
+def process_and_group_generator(image_paths, threshold=12, token=None, save_checkpoint_fn=None, logger=None, run_context=None, processed_paths=None, mode="complete"):
     """
     V2 Pipeline Generator:
       Step 1: Yields (processed, total, None) while hashing and computing quality (cached).
@@ -944,7 +972,7 @@ def process_and_group_generator(image_paths, threshold=12, token=None, save_chec
             logger.log_event(TelemetryLevel.INFO, "hashing_started", run_context, {"num_workers": num_workers})
 
         with ThreadPoolExecutor(max_workers=num_workers) as pool:
-            futures = {pool.submit(_process_single_image_cached, p, token): p for p in image_paths}
+            futures = {pool.submit(_process_single_image_cached, p, token, mode): p for p in image_paths}
             for future in as_completed(futures):
                 # Check if job is cancelled!
                 if token and token.is_cancelled():
@@ -2171,7 +2199,7 @@ def calculate_overall_score(metrics: dict) -> float:
     return float(overall_score)
 
 
-def analyze_image_quality(img_path, token=None):
+def analyze_image_quality(img_path, token=None, detect_faces=True):
     """
     V2 Quality Analysis — Multi-factor scoring with DNN face detection.
 
@@ -2249,17 +2277,20 @@ def analyze_image_quality(img_path, token=None):
     saturation_score = round(min(100.0, (mean_s / 120.0) * 100.0), 1)
 
     # ── 6. FACE DETECTION & BLINK ANALYSIS (MediaPipe with DNN fallback) ──
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    mp_faces = _analyze_eyes_mediapipe(img_rgb)
-    
     face_details = []
     face_avg_sharpness = 0.0
     face_avg_placement = 100.0
     eyes_open_score = 100.0
     has_blink = False
     subject_exposure = brightness_score
+    camera_facing = 0.0
     
-    if mp_faces:
+    mp_faces = []
+    if detect_faces:
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        mp_faces = _analyze_eyes_mediapipe(img_rgb)
+    
+    if detect_faces and mp_faces:
         face_sharpness_list = []
         face_placement_scores = []
         face_brightness_scores = []
@@ -2392,7 +2423,7 @@ def analyze_image_quality(img_path, token=None):
             face_avg_sharpness = 0.0
             face_avg_placement = 100.0
             
-    else:
+    elif detect_faces:
         # Fallback to OpenCV DNN Face Detector
         faces_raw = _detect_faces_dnn(img)
         if len(faces_raw) > 0:
@@ -2567,6 +2598,7 @@ def analyze_image_quality(img_path, token=None):
         "face_size_factor": float(round(face_size_factor, 1)) if 'face_size_factor' in locals() else 0.0,
         "subject_completeness": float(subject_completeness),
         "scoring_version": 4,
+        "faces_indexed": bool(detect_faces),
         "image_width": float(w),
         "image_height": float(h),
         "stage_presence": float(stage_presence),

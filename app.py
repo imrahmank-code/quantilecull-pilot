@@ -550,7 +550,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     
     # Write local crash.json for pilot crash reporting
     crash_data = {
-        "app_version": "1.2.1",
+        "app_version": "1.3.0",
         "error": str(exc_value),
         "stacktrace": err_msg,
         "machine_hash": get_machine_fingerprint(),
@@ -1283,7 +1283,7 @@ class WebviewApi:
             server_url = license_manager._get_db_value("server_url", "https://quantilecull.com/api")
             payload = {
                 "machine_id": get_machine_fingerprint(),
-                "app_version": "1.2.1",
+                "app_version": "1.3.0",
                 "error": error,
                 "stacktrace": stacktrace
             }
@@ -1728,6 +1728,20 @@ class WebviewApi:
                 "job_id": jid
             }
             
+            total_photos = len(active_paths) + len(pre_processed)
+            # Route culling run mode: Mode A/B/C routing
+            cull_run_mode = "complete"
+            if mode == "fast_review":
+                cull_run_mode = "fast_review"
+            elif mode == "complete_analysis":
+                cull_run_mode = "complete"
+            else:
+                # Auto Adaptive Policy
+                if total_photos >= 100:
+                    cull_run_mode = "fast_review"
+                else:
+                    cull_run_mode = "complete"
+            
             def save_chk(proc_paths, rem_paths):
                 full_processed = list(pre_processed) + list(proc_paths)
                 recovery_manager.save_checkpoint(jid, full_processed, rem_paths, threshold, top_percent or 0, target_path)
@@ -1735,7 +1749,6 @@ class WebviewApi:
             try:
                 # Discover files for report
                 _, scan_diag = scan_directory_for_images(target_path)
-                total_photos = len(active_paths) + len(pre_processed)
                 if total_photos == 0:
                     recovery_manager.clear_checkpoint()
                     write_diagnostics_report(target_path, scan_diag, [], [])
@@ -1768,7 +1781,8 @@ class WebviewApi:
                     save_checkpoint_fn=save_chk,
                     logger=telemetry_logger,
                     run_context=run_context,
-                    processed_paths=pre_processed
+                    processed_paths=pre_processed,
+                    mode=cull_run_mode
                 ):
                     with self._jobs_lock:
                         if jid in self._cancelled_jobs or token.is_cancelled():
@@ -1893,6 +1907,23 @@ class WebviewApi:
                         "result": result,
                         "error": None
                     }
+
+                # Trigger Asynchronous Background AI Face Indexing if in fast_review mode
+                if cull_run_mode == "fast_review":
+                    with self._jobs_lock:
+                        self._jobs[jid]["background_ai"] = {
+                            "status": "running",
+                            "progress": 0,
+                            "total": len(active_paths),
+                            "message": "⚡ Preparing background face indexing..."
+                        }
+                    
+                    def bg_ai_task():
+                        self.run_background_ai(active_paths, token, jid)
+                        
+                    bg_thread = threading.Thread(target=bg_ai_task, name=f"bg-ai-{jid}", daemon=True)
+                    bg_thread.start()
+
             except Exception as e:
                 traceback.print_exc()
                 recovery_manager.clear_checkpoint()
@@ -1907,6 +1938,77 @@ class WebviewApi:
 
         self._executor.submit(background_scan, job_id, verified_path, image_paths, processed_paths)
         return job_id
+
+    def run_background_ai(self, active_paths, token, jid):
+        import time
+        from image_analyzer import _process_single_image_cached
+        
+        total = len(active_paths)
+        processed_set = set()
+        
+        while len(processed_set) < len(active_paths):
+            if token.is_cancelled():
+                break
+                
+            # Yield CPU slice to ensure UI remains highly responsive
+            time.sleep(0.05)
+            
+            # Dynamically determine the next path to process based on viewport priority
+            next_path = None
+            
+            with self._jobs_lock:
+                priority = self._jobs.get(jid, {}).get("viewport_priority", {})
+                visible_list = priority.get("visible", [])
+                nearby_list = priority.get("nearby", [])
+                
+            # 1. First priority: Visible paths not yet processed
+            for p in visible_list:
+                if p not in processed_set and p in active_paths:
+                    next_path = p
+                    break
+                    
+            # 2. Second priority: Nearby paths not yet processed
+            if not next_path:
+                for p in nearby_list:
+                    if p not in processed_set and p in active_paths:
+                        next_path = p
+                        break
+                        
+            # 3. Third priority: Any remaining path
+            if not next_path:
+                for p in active_paths:
+                    if p not in processed_set:
+                        next_path = p
+                        break
+                        
+            if not next_path:
+                break
+                
+            processed_set.add(next_path)
+            
+            try:
+                _process_single_image_cached(next_path, token, mode="background_ai")
+                
+                with self._jobs_lock:
+                    if jid in self._jobs:
+                        self._jobs[jid]["background_ai"]["progress"] = len(processed_set)
+                        self._jobs[jid]["background_ai"]["message"] = f"⚡ Background Face Indexing {len(processed_set)} of {total} photos..."
+            except Exception as e:
+                print(f"[Background AI] Error processing {os.path.basename(next_path)}: {e}")
+                
+        with self._jobs_lock:
+            if jid in self._jobs:
+                self._jobs[jid]["background_ai"]["status"] = "completed"
+                self._jobs[jid]["background_ai"]["message"] = "⚡ Background Face Indexing completed."
+
+    def update_viewport_priority(self, job_id, visible_paths, nearby_paths):
+        with self._jobs_lock:
+            if job_id in self._jobs:
+                self._jobs[job_id]["viewport_priority"] = {
+                    "visible": list(visible_paths),
+                    "nearby": list(nearby_paths)
+                }
+        return True
 
     def _precache_single_image(self, path):
         try:

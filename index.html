@@ -50,6 +50,19 @@
                     <span>Update Available</span>
                 </div>
                 <div id="trial-badge" class="hidden" style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; padding: 0.35rem 0.65rem; color: var(--cyan); font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">Trial: -- Days Remaining</div>
+                <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                </style>
+                <div id="bg-ai-badge" class="hidden" style="background: rgba(91, 75, 255, 0.15); border: 1px solid rgba(91, 75, 255, 0.35); border-radius: 6px; padding: 0.35rem 0.65rem; color: #9a92ff; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 12px; height: 12px; animation: spin 2s linear infinite;">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    <span id="bg-ai-badge-text">Indexing Faces...</span>
+                </div>
                 <button id="btn-open-feedback" title="Send Feedback" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-secondary); cursor: pointer; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.2s; height: 32px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
