@@ -29,10 +29,8 @@ def get_utc_now():
 
 def get_machine_fingerprint():
     guid = ""
-    bios_uuid = ""
-    cpu_id = ""
     
-    # 1. Get MachineGuid (Windows registry)
+    # 1. Get MachineGuid (Windows registry) - fast, reliable, constant across all privileges
     if sys.platform == "win32":
         try:
             import winreg
@@ -42,39 +40,30 @@ def get_machine_fingerprint():
         except Exception:
             pass
             
-    # 2. Get BIOS UUID (PowerShell / system profiler)
-    try:
-        if sys.platform == "win32":
-            bios_uuid = subprocess.check_output(
-                "powershell -Command \"(Get-CimInstance Win32_ComputerSystemProduct).UUID\"", 
+    # 2. Get macOS System UUID
+    if sys.platform == "darwin":
+        try:
+            out = subprocess.check_output(
+                "ioreg -rd1 -c IOPlatformExpertDevice", 
                 shell=True, stderr=subprocess.DEVNULL
-            ).decode().strip()
-        else:
-            bios_uuid = subprocess.check_output(
-                "ioreg -rd1 -c IOPlatformExpertDevice | grep -i UUID", 
-                shell=True, stderr=subprocess.DEVNULL
-            ).decode().strip()
-    except Exception:
-        pass
-        
-    # 3. Get CPU ID
-    try:
-        if sys.platform == "win32":
-            cpu_id = subprocess.check_output(
-                "powershell -Command \"(Get-CimInstance Win32_Processor).ProcessorId\"", 
-                shell=True, stderr=subprocess.DEVNULL
-            ).decode().strip()
-    except Exception:
-        pass
+            ).decode()
+            for line in out.splitlines():
+                if "IOPlatformUUID" in line:
+                    guid = line.split("=")[-1].replace('"', '').strip()
+                    break
+        except Exception:
+            pass
 
-    # Fallback to MAC address + hostname if hardware UUID query fails
-    if not (guid or bios_uuid or cpu_id):
+    # Fallback to MAC address + hostname if primary UUID query fails
+    if not guid:
         import uuid
         import socket
-        guid = str(uuid.getnode())
-        bios_uuid = socket.gethostname()
+        mac = str(uuid.getnode())
+        hostname = socket.gethostname()
+        raw_str = f"{mac}:{hostname}"
+    else:
+        raw_str = guid
         
-    raw_str = f"{guid}:{bios_uuid}:{cpu_id}"
     return hashlib.sha256(raw_str.encode('utf-8')).hexdigest()
 
 class LicenseManager:
