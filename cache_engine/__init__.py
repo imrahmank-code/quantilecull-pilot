@@ -13,6 +13,7 @@ DB_FILE = ".quantilecull_cache.db"
 def _get_db_connection():
     conn = sqlite3.connect(DB_FILE, timeout=10.0)
     conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
 
 def _init_cache():

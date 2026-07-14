@@ -38,6 +38,7 @@ _CACHE_DB_PATH = os.path.join(str(_BASE_DIR), '.quantilecull_cache.db')
 _db_lock = threading.Lock()
 
 _mediapipe_lock = threading.Lock()
+_face_mesh_singleton = None
 
 import traceback
 
@@ -1209,26 +1210,34 @@ def _get_dynamic_denominator(img_shape, base_denom=25.0):
     return base_denom * scale_factor
 
 
+def _get_face_mesh():
+    global _face_mesh_singleton
+    if _face_mesh_singleton is None:
+        try:
+            import mediapipe as mp
+            _face_mesh_singleton = mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=True,
+                max_num_faces=10,
+                refine_landmarks=True,
+                min_detection_confidence=0.5
+            )
+        except Exception as e:
+            print(f"[MediaPipe] Failed to initialize FaceMesh singleton: {e}")
+            _face_mesh_singleton = None
+    return _face_mesh_singleton
+
+
 def _analyze_eyes_mediapipe(img_rgb):
     """
     Runs MediaPipe Face Mesh on the RGB image.
     Returns list of face details dictionaries containing bbox, is_blink, and eye landmarks.
     """
-    try:
-        import mediapipe as mp
-        mp_face_mesh = mp.solutions.face_mesh
-    except (ImportError, AttributeError):
-        return []
-    
     _mediapipe_lock.acquire()
     try:
-        with mp_face_mesh.FaceMesh(
-            static_image_mode=True,
-            max_num_faces=10,
-            refine_landmarks=True,
-            min_detection_confidence=0.5
-        ) as face_mesh:
-            results = face_mesh.process(img_rgb)
+        face_mesh = _get_face_mesh()
+        if face_mesh is None:
+            return []
+        results = face_mesh.process(img_rgb)
     except Exception as e:
         print(f"[MediaPipe] Error processing face landmarks: {e}")
         return []
