@@ -26,7 +26,14 @@ if (-not $isccPath) {
 }
 Write-Host "[OK] Found Inno Setup Compiler at: $isccPath" -ForegroundColor Green
 
-# 2. Run PyInstaller
+# 2. Clean up static folder to avoid recursive packaging
+$staticSetupFile = "E:\Antigravity Projects\Photo Cleaner App\static\QuantileCull_1.2.1_Setup.exe"
+if (Test-Path $staticSetupFile) {
+    Write-Host "Cleaning up static setup binary before PyInstaller run..." -ForegroundColor Yellow
+    Remove-Item $staticSetupFile -Force
+}
+
+# 3. Run PyInstaller
 Write-Host "Compiling standalone Python binary (QuantileCull_V1.2.1.spec)..." -ForegroundColor Yellow
 $pyinstallerPath = "E:\Antigravity Projects\Photo Cleaner App\.venv\Scripts\pyinstaller.exe"
 if (-not (Test-Path $pyinstallerPath)) {
@@ -41,7 +48,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "[OK] PyInstaller compilation completed successfully." -ForegroundColor Green
 
-# 3. Run Inno Setup Compiler
+# 4. Run Inno Setup Compiler
 Write-Host "Compiling setup installer package (setup_V1.2.1.iss)..." -ForegroundColor Yellow
 & $isccPath setup_V1.2.1.iss
 if ($LASTEXITCODE -ne 0) {
