@@ -94,7 +94,7 @@ class TestLicensing(unittest.TestCase):
 
     def test_license_install_and_validate_active(self):
         fingerprint = licensing.get_machine_fingerprint()
-        now = datetime.datetime.now()
+        now = licensing.get_utc_now()
         expiry = now + datetime.timedelta(days=15) # 15 days left
         
         payload = {
@@ -114,7 +114,7 @@ class TestLicensing(unittest.TestCase):
 
     def test_license_validate_expired(self):
         fingerprint = licensing.get_machine_fingerprint()
-        now = datetime.datetime.now()
+        now = licensing.get_utc_now()
         activation = now - datetime.timedelta(days=40)
         expiry = now - datetime.timedelta(days=10) # expired 10 days ago
         
@@ -134,7 +134,7 @@ class TestLicensing(unittest.TestCase):
 
     def test_clock_rollback_detection(self):
         fingerprint = licensing.get_machine_fingerprint()
-        now = datetime.datetime.now()
+        now = licensing.get_utc_now()
         expiry = now + datetime.timedelta(days=30)
         
         payload = {

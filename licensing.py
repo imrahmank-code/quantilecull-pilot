@@ -24,6 +24,9 @@ CACHE_DB_PATH = _BASE_DIR / ".quantilecull_cache.db"
 SECRET_SALT = b"QuantileCull_Secure_License_Key_Salt_2026_#"
 HMAC_SECRET = b"QuantileCull_HMAC_Secret_2026_$"
 
+def get_utc_now():
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
 def get_machine_fingerprint():
     guid = ""
     bios_uuid = ""
@@ -213,8 +216,8 @@ class LicenseManager:
             with open(LICENSE_FILE_PATH, "w") as f:
                 f.write(encrypted_str)
             
-            # Set last_run_time to now
-            self._update_last_run_time(datetime.datetime.now())
+            # Set last_run_time to now (UTC)
+            self._update_last_run_time(get_utc_now())
             return True
         except Exception as e:
             print(f"[Licensing] Failed to install license: {e}")
@@ -238,26 +241,36 @@ class LicenseManager:
                     "message": "Owner License: Unlimited"
                 }
             
-            payload = self.decrypt_license(encrypted_str, fingerprint)
-            
-            if not self.verify_signature(payload):
-                return {"status": "tampered", "days_remaining": 0, "message": "License Verification Failed"}
-                
-            if payload.get("fingerprint") != fingerprint:
-                return {"status": "tampered", "days_remaining": 0, "message": "License Verification Failed"}
+            # Parse and validate the license payload. Catch decryption or signature/fingerprint
+            # failures separately as unactivated/invalid status to avoid false-positive clock rollback.
+            try:
+                payload = self.decrypt_license(encrypted_str, fingerprint)
+                if not self.verify_signature(payload) or payload.get("fingerprint") != fingerprint:
+                    return {"status": "unactivated", "days_remaining": 0, "message": "License Key Invalid"}
+            except Exception as decrypt_err:
+                print(f"[Licensing] License payload validation failed: {decrypt_err}")
+                return {"status": "unactivated", "days_remaining": 0, "message": "License Key Invalid"}
                 
             expiry_str = payload.get("expiry_date")
             activation_str = payload.get("activation_date")
             
             expiry_dt = datetime.datetime.fromisoformat(expiry_str)
             activation_dt = datetime.datetime.fromisoformat(activation_str)
-            now = datetime.datetime.now()
+            now = get_utc_now()
             
             # Clock tampering detection
             last_run = self._get_last_run_time()
-            if last_run and now < last_run - datetime.timedelta(minutes=15):
-                print(f"[Licensing] Clock rollback detected! Current: {now}, Last seen: {last_run}")
-                return {"status": "tampered", "days_remaining": 0, "message": "License Verification Failed"}
+            
+            # Use 24-hour tolerance threshold for timezone, DST, NTP sync, and minor adjustments
+            if last_run and now < last_run - datetime.timedelta(hours=24):
+                print(f"[Licensing] Clock rollback detected! Current UTC: {now.isoformat()}, Last seen UTC: {last_run.isoformat()}")
+                return {
+                    "status": "tampered", 
+                    "days_remaining": 0, 
+                    "message": "License Verification Failed",
+                    "current_time": now.isoformat(),
+                    "last_run_time": last_run.isoformat()
+                }
                 
             # Update last run time to now
             self._update_last_run_time(max(now, last_run) if last_run else now)
@@ -277,7 +290,7 @@ class LicenseManager:
             
         except Exception as e:
             print(f"[Licensing] License validation encountered exception: {e}")
-            return {"status": "tampered", "days_remaining": 0, "message": "License Verification Failed"}
+            return {"status": "unactivated", "days_remaining": 0, "message": f"Verification error: {str(e)}"}
 
     def get_usage_metrics(self) -> dict:
         try:

@@ -2620,6 +2620,15 @@ function initLicensing() {
             } else if (lic.status === 'tampered') {
                 isLicenseActive = false;
                 if (tamperWarningBar) tamperWarningBar.classList.remove('hidden');
+                
+                // Format and display the dates in user's local timezone for clarity
+                const curTime = lic.current_time ? new Date(lic.current_time).toLocaleString() : 'Unknown';
+                const lastTime = lic.last_run_time ? new Date(lic.last_run_time).toLocaleString() : 'Unknown';
+                const reasonEl = document.getElementById('tamper-reason');
+                if (reasonEl) {
+                    reasonEl.textContent = `System clock mismatch. Current Time: ${curTime} | Last Verified Run: ${lastTime}. Please verify your system clock.`;
+                }
+                
                 disableAppActions('tampered');
             }
 
@@ -2661,6 +2670,21 @@ function setupLicensingUI() {
     const lnkReactivate = document.getElementById('lnk-reactivate');
     const btnCloseExpired = document.getElementById('btn-close-expired');
     const expiredOverlay = document.getElementById('expired-overlay');
+    
+    const btnTamperRetry = document.getElementById('btn-tamper-retry');
+    const btnTamperReactivate = document.getElementById('btn-tamper-reactivate');
+    const activationOverlay = document.getElementById('activation-overlay');
+    
+    if (btnTamperRetry) {
+        btnTamperRetry.addEventListener('click', () => {
+            initLicensing();
+        });
+    }
+    if (btnTamperReactivate && activationOverlay) {
+        btnTamperReactivate.addEventListener('click', () => {
+            activationOverlay.classList.remove('hidden');
+        });
+    }
     
     if (lnkReactivate && expiredOverlay) {
         lnkReactivate.addEventListener('click', (e) => {
