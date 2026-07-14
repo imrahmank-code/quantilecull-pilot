@@ -119,8 +119,9 @@ The external HDD is the authoritative source of truth for all Antigravity projec
      ```
   3. The script will automatically locate Inno Setup 6, clean intermediate directories, compile the binary, and build the final `QuantileCull_Setup.exe`.
 * **Deployment/Distribution**:
-  - The website's dynamic redirect (`api/download.js`) points to Filebin: `https://filebin.net/quantilecull-v11/QuantileCull_Setup.zip`.
-  - When changes are made, zip the new setup file, upload it to the Filebin path, and redeploy to Vercel via `npx vercel --prod --yes`.
+  - **Secure Hosting Required**: Do not use public temporary file sharing services like Filebin. Public upload folders are subject to file expiration (which breaks downloads) and hijack/malware substitution risks.
+  - **Production Hosting**: Host the setup installer on secure, permanent storage, such as the Render static server (`/static/` folder) or as a tagged GitHub Release asset.
+  - **Vercel Redirect**: Update the landing page dynamic redirect (`api/download.js`) to point to the secure Render download link: `https://quantilecull-pilot.onrender.com/static/QuantileCull_1.2.1_Setup.exe` or the corresponding GitHub Release asset link.
 
 
 
