@@ -103,9 +103,7 @@ def _set_cached_analysis(path, mtime, sha256, phash, ratio, timestamp, metrics):
         metrics_copy = metrics.copy()
         faces = metrics_copy.pop('faces', [])
         
-        cache_engine.set_cached_item(path, mtime, xmp_mtime, sha256, phash, ratio, timestamp, metrics_copy)
-        cache_engine.set_face_embeddings(path, faces)
-        cache_engine.incremental_cluster_update(path, faces)
+        cache_engine.save_analysis_transaction(path, mtime, xmp_mtime, sha256, phash, ratio, timestamp, metrics_copy, faces)
     except Exception as e:
         print(f"Failed to write cache to engine: {e}")
 
@@ -131,14 +129,16 @@ def _get_face_net():
     """Lazily load the OpenCV DNN SSD face detector (thread-safe singleton)."""
     global _face_net
     if _face_net is None:
-        import cv2
-        prototxt = os.path.join(_MODELS_DIR, 'deploy.prototxt')
-        caffemodel = os.path.join(_MODELS_DIR, 'res10_300x300_ssd_iter_140000.caffemodel')
-        if os.path.exists(prototxt) and os.path.exists(caffemodel):
-            _face_net = cv2.dnn.readNetFromCaffe(prototxt, caffemodel)
-            print(f"[Engine V2] DNN face detector loaded from {_MODELS_DIR}")
-        else:
-            print(f"[Engine V2] WARNING: DNN models not found at {_MODELS_DIR}, falling back to Haar Cascade")
+        with _face_net_lock:
+            if _face_net is None:
+                import cv2
+                prototxt = os.path.join(_MODELS_DIR, 'deploy.prototxt')
+                caffemodel = os.path.join(_MODELS_DIR, 'res10_300x300_ssd_iter_140000.caffemodel')
+                if os.path.exists(prototxt) and os.path.exists(caffemodel):
+                    _face_net = cv2.dnn.readNetFromCaffe(prototxt, caffemodel)
+                    print(f"[Engine V2] DNN face detector loaded from {_MODELS_DIR}")
+                else:
+                    print(f"[Engine V2] WARNING: DNN models not found at {_MODELS_DIR}, falling back to Haar Cascade")
     return _face_net
 
 
@@ -562,48 +562,97 @@ def _process_single_image_cached(path, token=None):
         if token and token.is_cancelled():
             return None
         try:
-            # Stage: EMBEDDING (hashing)
-            try:
-                sha = _sha256_file(path)
-                if sha is None:
-                    raise OSError(22, "File is empty or unreadable")
-                result['sha256'] = sha
-            except Exception as e:
-                tb_str = traceback.format_exc()
-                record_pipeline_failure(
-                    path,
-                    "LOAD_FAILURE" if isinstance(e, (OSError, IOError)) else "EMBEDDING_FAILURE",
-                    f"SHA-256 generation failed: {e}",
-                    tb_str,
-                    threading.current_thread().name,
-                    "EMBEDDING"
-                )
-                raise
-
+            # Single-pass read, decode, and hash to eliminate duplicate Disk I/O & decodes
+            loaded_cv2_img = None
             try:
                 from raw_engine import is_raw_file
                 if is_raw_file(path):
+                    sha = _sha256_file(path)
+                    if sha is None:
+                        raise OSError(22, "File is empty or unreadable")
+                    result['sha256'] = sha
+                    
                     from preview_engine import extract_raw_preview
-                    from io import BytesIO
+                    from PIL import Image
+                    import imagehash
+                    import cv2
+                    import numpy as np
+                    
                     preview_bytes = extract_raw_preview(path)
                     if preview_bytes:
-                        with Image.open(BytesIO(preview_bytes)) as img:
-                            result['phash'] = imagehash.phash(img)
-                            w, h = img.size
+                        nparr = np.frombuffer(preview_bytes, np.uint8)
+                        loaded_cv2_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                        if loaded_cv2_img is not None:
+                            h, w = loaded_cv2_img.shape[:2]
                             result['ratio'] = max(w, h) / min(w, h) if min(w, h) > 0 else 1.0
+                            
+                            if max(h, w) > ANALYSIS_MAX_DIM:
+                                scale = ANALYSIS_MAX_DIM / max(h, w)
+                                loaded_cv2_img = cv2.resize(loaded_cv2_img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                                h, w = loaded_cv2_img.shape[:2]
+                                
+                            scale_phash = 256.0 / max(h, w)
+                            img_small = cv2.resize(loaded_cv2_img, (int(w * scale_phash), int(h * scale_phash)), interpolation=cv2.INTER_AREA)
+                            img_rgb = cv2.cvtColor(img_small, cv2.COLOR_BGR2RGB)
+                            with Image.fromarray(img_rgb) as img_pil:
+                                result['phash'] = imagehash.phash(img_pil)
                     else:
                         raise ValueError("Failed to extract preview bytes for RAW phash")
                 else:
-                    with Image.open(path) as img:
-                        result['phash'] = imagehash.phash(img)
-                        w, h = img.size
+                    import hashlib
+                    from PIL import Image
+                    import imagehash
+                    import cv2
+                    import numpy as np
+                    
+                    with open(path, 'rb') as f:
+                        file_bytes = f.read()
+                    
+                    if not file_bytes:
+                        raise OSError(22, "File is empty or unreadable")
+                        
+                    result['sha256'] = hashlib.sha256(file_bytes).hexdigest()
+                    
+                    nparr = np.frombuffer(file_bytes, np.uint8)
+                    loaded_cv2_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    if loaded_cv2_img is not None:
+                        h, w = loaded_cv2_img.shape[:2]
                         result['ratio'] = max(w, h) / min(w, h) if min(w, h) > 0 else 1.0
+                        
+                        if max(h, w) > ANALYSIS_MAX_DIM:
+                            scale = ANALYSIS_MAX_DIM / max(h, w)
+                            loaded_cv2_img = cv2.resize(loaded_cv2_img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                            h, w = loaded_cv2_img.shape[:2]
+                            
+                        scale_phash = 256.0 / max(h, w)
+                        img_small = cv2.resize(loaded_cv2_img, (int(w * scale_phash), int(h * scale_phash)), interpolation=cv2.INTER_AREA)
+                        img_rgb = cv2.cvtColor(img_small, cv2.COLOR_BGR2RGB)
+                        with Image.fromarray(img_rgb) as img_pil:
+                            result['phash'] = imagehash.phash(img_pil)
+                    else:
+                        # Fallback for formats not supported by cv2 but by PIL
+                        from io import BytesIO
+                        with Image.open(BytesIO(file_bytes)) as img_pil:
+                            w, h = img_pil.size
+                            result['ratio'] = max(w, h) / min(w, h) if min(w, h) > 0 else 1.0
+                            img_pil.thumbnail((256, 256))
+                            result['phash'] = imagehash.phash(img_pil)
+                            
+                            import PIL.ImageOps as ImageOps
+                            img_pil = ImageOps.exif_transpose(img_pil)
+                            if img_pil.mode != 'RGB':
+                                img_pil = img_pil.convert('RGB')
+                            loaded_cv2_img = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+                            if max(loaded_cv2_img.shape[:2]) > ANALYSIS_MAX_DIM:
+                                h, w = loaded_cv2_img.shape[:2]
+                                scale = ANALYSIS_MAX_DIM / max(h, w)
+                                loaded_cv2_img = cv2.resize(loaded_cv2_img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
             except Exception as e:
                 tb_str = traceback.format_exc()
                 record_pipeline_failure(
                     path,
                     "LOAD_FAILURE" if isinstance(e, (OSError, IOError)) else "EMBEDDING_FAILURE",
-                    f"pHash generation failed: {e}",
+                    f"Image loading, decoding and hashing failed: {e}",
                     tb_str,
                     threading.current_thread().name,
                     "EMBEDDING"
@@ -619,7 +668,7 @@ def _process_single_image_cached(path, token=None):
             if token and token.is_cancelled():
                 return None
             try:
-                result['metrics'] = analyze_image_quality(path, token=token)
+                result['metrics'] = analyze_image_quality(path, token=token, loaded_image=loaded_cv2_img)
                 if result['metrics'] is None:
                     raise ValueError("analyze_image_quality returned None")
                 
@@ -1170,7 +1219,13 @@ def _compute_motion_blur_score(gray):
     """Detect motion blur via Fourier analysis of the Laplacian.
     Returns a score 0-100 where high = sharp, low = motion blurred."""
     import cv2
-    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+    h_orig, w_orig = gray.shape[:2]
+    if max(h_orig, w_orig) > 256:
+        scale = 256.0 / max(h_orig, w_orig)
+        gray_small = cv2.resize(gray, (int(w_orig * scale), int(h_orig * scale)), interpolation=cv2.INTER_AREA)
+    else:
+        gray_small = gray
+    laplacian = cv2.Laplacian(gray_small, cv2.CV_64F)
 
     # Fourier transform of Laplacian
     f_transform = np.fft.fft2(laplacian)
@@ -2171,7 +2226,7 @@ def calculate_overall_score(metrics: dict) -> float:
     return float(overall_score)
 
 
-def analyze_image_quality(img_path, token=None):
+def analyze_image_quality(img_path, token=None, loaded_image=None):
     """
     V2 Quality Analysis — Multi-factor scoring with DNN face detection.
 
@@ -2181,7 +2236,7 @@ def analyze_image_quality(img_path, token=None):
     if token and token.is_cancelled():
         return None
 
-    img = _read_image(img_path, max_dim=ANALYSIS_MAX_DIM)
+    img = loaded_image if loaded_image is not None else _read_image(img_path, max_dim=ANALYSIS_MAX_DIM)
     if img is None:
         tb_str = traceback.format_exc()
         record_pipeline_failure(
@@ -2212,11 +2267,12 @@ def analyze_image_quality(img_path, token=None):
     # ── 1. SHARPNESS (Laplacian Variance with a light Gaussian blur to keep fine details) ────
     gray_filtered = cv2.GaussianBlur(gray, (3, 3), 0)
     
-    # Calculate Laplacian variance of full image and the center region (where subject is)
-    lap_var_full = cv2.Laplacian(gray_filtered, cv2.CV_64F).var()
-    center_roi = gray_filtered[int(h*0.2):int(h*0.8), int(w*0.2):int(w*0.8)]
-    if center_roi.size > 0:
-        lap_var_center = cv2.Laplacian(center_roi, cv2.CV_64F).var()
+    # Calculate Laplacian of full image once and slice center ROI to avoid double convolution
+    laplacian = cv2.Laplacian(gray_filtered, cv2.CV_64F)
+    lap_var_full = laplacian.var()
+    center_roi_lap = laplacian[int(h*0.2):int(h*0.8), int(w*0.2):int(w*0.8)]
+    if center_roi_lap.size > 0:
+        lap_var_center = center_roi_lap.var()
         # 60% weight on the center ROI to focus on the primary subject, 40% on full image
         lap_var = 0.60 * lap_var_center + 0.40 * lap_var_full
     else:

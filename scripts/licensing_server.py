@@ -435,6 +435,11 @@ def feature_request():
 
 @app.route('/static/<filepath:path>')
 def serve_static(filepath):
+    # Redirect any versioned installers (e.g. QuantileCull_1.2.1_Setup.exe, QuantileCull_1.2.2_Setup.exe) to the standardized latest setup
+    if filepath.startswith('QuantileCull_') and filepath.endswith('_Setup.exe') and filepath != 'QuantileCull_Setup.exe':
+        bottle.response.status = 301
+        bottle.response.set_header('Location', '/static/QuantileCull_Setup.exe')
+        return
     return bottle.static_file(filepath, root=str(WORKSPACE_DIR / "static"))
 
 @app.route('/latest-version', method=['GET'])
@@ -442,8 +447,8 @@ def latest_version():
     host = bottle.request.headers.get('Host', 'localhost:5005')
     scheme = 'https' if any(x in host for x in ['onrender.com', 'koyeb.app', 'lhr.life', 'ngrok']) else 'http'
     return {
-        "version": "1.2.1",
-        "download_url": f"{scheme}://{host}/static/QuantileCull_1.2.1_Setup.exe"
+        "version": "1.2.2",
+        "download_url": f"{scheme}://{host}/static/QuantileCull_Setup.exe"
     }
 
 @app.route('/admin', method=['GET'])

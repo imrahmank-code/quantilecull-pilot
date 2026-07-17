@@ -9,12 +9,17 @@ from pathlib import Path
 # Thread safety lock
 _db_lock = threading.Lock()
 DB_FILE = ".quantilecull_cache.db"
+_thread_local = threading.local()
 
 def _get_db_connection():
-    conn = sqlite3.connect(DB_FILE, timeout=10.0)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-    return conn
+    if not hasattr(_thread_local, "conn"):
+        conn = sqlite3.connect(DB_FILE, timeout=15.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA cache_size=-4000;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
+        _thread_local.conn = conn
+    return _thread_local.conn
 
 def _init_cache():
     try:
@@ -377,14 +382,208 @@ def incremental_cluster_update(file_path: str, faces: list):
                     
                     best_cid = None
                     best_sim = -1.0
-                    for cid, cent in centroids.items():
-                        dot = np.dot(femb_arr, cent)
-                        norm1 = np.linalg.norm(femb_arr)
-                        norm2 = np.linalg.norm(cent)
-                        sim = float(dot / (norm1 * norm2)) if norm1 > 0 and norm2 > 0 else 0.0
-                        if sim > best_sim:
-                            best_sim = sim
-                            best_cid = cid
+                    norm1 = np.linalg.norm(femb_arr)
+                    if norm1 > 0:
+                        for cid, cent in centroids.items():
+                            sim = float(np.dot(femb_arr, cent) / norm1)
+                            if sim > best_sim:
+                                best_sim = sim
+                                best_cid = cid
+                            
+                    if best_cid is not None and best_sim >= 0.75:
+                        assigned_cid = best_cid
+                        face["cluster_id"] = assigned_cid
+                        face["matching_score"] = best_sim
+                        face["identity_state"] = "stable"
+                        
+                        old_cent = centroids[assigned_cid]
+                        cursor.execute("SELECT face_count FROM cluster_statistics WHERE cluster_id=?", (assigned_cid,))
+                        row = cursor.fetchone()
+                        count = row[0] if row else 1
+                        
+                        new_cent = (old_cent * count + femb_arr) / (count + 1)
+                        norm = np.linalg.norm(new_cent)
+                        if norm > 0:
+                            new_cent /= norm
+                        centroids[assigned_cid] = new_cent
+                        
+                        new_emb_blob = new_cent.tobytes()
+                        conn.execute("""
+                            UPDATE identity_clusters 
+                            SET average_embedding=?, last_updated=? 
+                            WHERE cluster_id=?
+                        """, (new_emb_blob, time.time(), assigned_cid))
+                        
+                        conn.execute("""
+                            UPDATE cluster_statistics 
+                            SET face_count=face_count+1 
+                            WHERE cluster_id=?
+                        """, (assigned_cid,))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO identity_clusters 
+                            (average_embedding, confidence, creation_timestamp, last_updated)
+                            VALUES (?, ?, ?, ?)
+                        """, (femb_arr.tobytes(), face.get("confidence", 1.0), time.time(), time.time()))
+                        assigned_cid = cursor.lastrowid
+                        face["cluster_id"] = assigned_cid
+                        face["matching_score"] = 1.0
+                        face["identity_state"] = "unclustered"
+                        centroids[assigned_cid] = femb_arr
+                        
+                        conn.execute("""
+                            INSERT INTO cluster_statistics 
+                            (cluster_id, face_count, average_confidence, max_similarity, min_similarity)
+                            VALUES (?, 1, ?, 1.0, 1.0)
+                        """, (assigned_cid, face.get("confidence", 1.0)))
+                        
+                    bbox = face.get("bbox", [0, 0, 0, 0])
+                    fconf = face.get("confidence", 1.0)
+                    q = face.get("quality", {})
+                    sharp = q.get("sharpness", 0.0)
+                    exp = q.get("exposure", 0.0)
+                    lm = face.get("landmarks", {})
+                    orient = face.get("orientation", {})
+                    femb_blob = femb_arr.tobytes()
+                    
+                    conn.execute("""
+                        INSERT INTO identity_faces
+                        (cluster_id, file_path, bbox_x, bbox_y, bbox_w, bbox_h, confidence,
+                         sharpness, exposure, landmarks, orientation, embedding)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (assigned_cid, file_path, bbox[0], bbox[1], bbox[2], bbox[3], fconf,
+                          sharp, exp, json.dumps(lm), json.dumps(orient), femb_blob))
+                conn.commit()
+    except Exception as e:
+        print(f"[cache_engine] Error doing incremental cluster update: {e}")
+
+
+def get_face_embeddings(path: str) -> list:
+    """Queries face metadata and deserializes binary BLOB face embeddings from SQLite, resolving cluster and person info."""
+    import numpy as np
+    faces = []
+    try:
+        with _db_lock:
+            with _get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT f.bbox_x, f.bbox_y, f.bbox_w, f.bbox_h, f.confidence, 
+                           f.sharpness, f.exposure, f.landmarks, f.orientation, f.embedding,
+                           f.cluster_id, s.face_count, c.person_id, p.name
+                    FROM identity_faces f
+                    LEFT JOIN cluster_statistics s ON f.cluster_id = s.cluster_id
+                    LEFT JOIN identity_clusters c ON f.cluster_id = c.cluster_id
+                    LEFT JOIN persons p ON c.person_id = p.person_id
+                    WHERE f.file_path=?
+                """, (path,))
+                rows = cursor.fetchall()
+                
+                if not rows:
+                    cursor.execute("""SELECT bbox_x, bbox_y, bbox_w, bbox_h, confidence, 
+                                             sharpness, exposure, landmarks, orientation, embedding 
+                                      FROM face_embeddings WHERE file_path=?""", (path,))
+                    rows = cursor.fetchall()
+                    for row in rows:
+                        bx, by, bw, bh, conf, sharp, exp, lm_json, orient_json, emb_blob = row
+                        embedding = None
+                        if emb_blob:
+                            embedding = np.frombuffer(emb_blob, dtype=np.float32).tolist()
+                        faces.append({
+                            "bbox": [bx, by, bw, bh],
+                            "confidence": conf,
+                            "quality": {"sharpness": sharp, "exposure": exp},
+                            "landmarks": json.loads(lm_json) if lm_json else {},
+                            "orientation": json.loads(orient_json) if orient_json else {},
+                            "embedding": embedding,
+                            "cluster_id": None,
+                            "cluster_confidence": 0.0,
+                            "identity_state": "unclustered",
+                            "cluster_size": 0,
+                            "matching_score": 0.0,
+                            "person_id": None,
+                            "person_name": None
+                        })
+                    return faces
+                    
+                for row in rows:
+                    bx, by, bw, bh, conf, sharp, exp, lm_json, orient_json, emb_blob, cid, csize, pid, pname = row
+                    embedding = None
+                    if emb_blob:
+                        embedding = np.frombuffer(emb_blob, dtype=np.float32).tolist()
+                    
+                    matching_score = 1.0
+                    if cid is not None:
+                        cursor.execute("SELECT average_embedding FROM identity_clusters WHERE cluster_id=?", (cid,))
+                        crow = cursor.fetchone()
+                        if crow and crow[0] and emb_blob:
+                            cent = np.frombuffer(crow[0], dtype=np.float32)
+                            femb = np.frombuffer(emb_blob, dtype=np.float32)
+                            dot = np.dot(femb, cent)
+                            norm1 = np.linalg.norm(femb)
+                            norm2 = np.linalg.norm(cent)
+                            matching_score = float(dot / (norm1 * norm2)) if norm1 > 0 and norm2 > 0 else 0.0
+                            
+                    faces.append({
+                        "bbox": [bx, by, bw, bh],
+                        "confidence": conf,
+                        "quality": {"sharpness": sharp, "exposure": exp},
+                        "landmarks": json.loads(lm_json) if lm_json else {},
+                        "orientation": json.loads(orient_json) if orient_json else {},
+                        "embedding": embedding,
+                        "cluster_id": cid,
+                        "cluster_confidence": conf,
+                        "identity_state": "stable" if cid is not None else "unclustered",
+                        "cluster_size": csize or 0,
+                        "matching_score": matching_score,
+                        "person_id": pid,
+                        "person_name": pname
+                    })
+            with _get_db_connection() as conn:
+                conn.execute("DELETE FROM cluster_statistics")
+                conn.execute("DELETE FROM cluster_history")
+                conn.execute("DELETE FROM identity_faces")
+                conn.execute("DELETE FROM identity_clusters")
+                conn.commit()
+    except Exception as e:
+        print(f"[cache_engine] Error invalidating clusters: {e}")
+
+
+def incremental_cluster_update(file_path: str, faces: list):
+    """
+    Saves face details for a single photo and maps each face to existing or new identity clusters.
+    If the face embedding matches an existing cluster above similarity threshold, it joins that cluster.
+    """
+    import numpy as np
+    import time
+    try:
+        with _db_lock:
+            with _get_db_connection() as conn:
+                conn.execute("DELETE FROM identity_faces WHERE file_path=?", (file_path,))
+                
+                cursor = conn.cursor()
+                cursor.execute("SELECT cluster_id, average_embedding FROM identity_clusters WHERE status='active'")
+                cluster_rows = cursor.fetchall()
+                
+                centroids = {}
+                for cid, emb_blob in cluster_rows:
+                    if emb_blob:
+                        centroids[cid] = np.frombuffer(emb_blob, dtype=np.float32)
+                        
+                for face in faces:
+                    femb = face.get("embedding")
+                    if not femb:
+                        continue
+                    femb_arr = np.array(femb, dtype=np.float32)
+                    
+                    best_cid = None
+                    best_sim = -1.0
+                    norm1 = np.linalg.norm(femb_arr)
+                    if norm1 > 0:
+                        for cid, cent in centroids.items():
+                            sim = float(np.dot(femb_arr, cent) / norm1)
+                            if sim > best_sim:
+                                best_sim = sim
+                                best_cid = cid
                             
                     if best_cid is not None and best_sim >= 0.75:
                         assigned_cid = best_cid
@@ -566,6 +765,138 @@ def set_face_embeddings(path: str, faces: list):
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                                  (path, bbox[0], bbox[1], bbox[2], bbox[3], conf, 
                                   sharp, exp, json.dumps(lm), json.dumps(orient), emb_blob))
-                conn.commit()
     except Exception as e:
         print(f"[cache_engine] Error writing face embeddings for {path}: {e}")
+
+def save_analysis_transaction(path: str, mtime: float, xmp_mtime: float, sha256: str, phash: str, ratio: float, timestamp: float, metrics: dict, faces: list):
+    """Saves cache item, face embeddings, and performs incremental cluster update in a single transaction."""
+    import numpy as np
+    import time
+    try:
+        with _db_lock:
+            with _get_db_connection() as conn:
+                # 1. set_cached_item logic
+                phash_str = str(phash) if phash is not None else None
+                ts = timestamp.timestamp() if timestamp != datetime.datetime.min else 0.0
+                metrics_json = json.dumps(metrics) if metrics else None
+                conn.execute('''INSERT OR REPLACE INTO image_cache 
+                                (file_path, mtime, xmp_mtime, sha256, phash, ratio, timestamp, metrics) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                             (path, mtime, xmp_mtime, sha256, phash_str, ratio, ts, metrics_json))
+                             
+                # 2. set_face_embeddings logic
+                conn.execute("DELETE FROM face_embeddings WHERE file_path=?", (path,))
+                for face in faces:
+                    bbox = face.get("bbox", [0, 0, 0, 0])
+                    conf = face.get("confidence", 1.0)
+                    q = face.get("quality", {})
+                    sharp = q.get("sharpness", 0.0)
+                    exp = q.get("exposure", 0.0)
+                    lm = face.get("landmarks", {})
+                    orient = face.get("orientation", {})
+                    emb = face.get("embedding", None)
+                    
+                    emb_blob = None
+                    if emb:
+                        emb_blob = np.array(emb, dtype=np.float32).tobytes()
+                        
+                    conn.execute('''INSERT INTO face_embeddings 
+                                    (file_path, bbox_x, bbox_y, bbox_w, bbox_h, confidence, 
+                                     sharpness, exposure, landmarks, orientation, embedding) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                 (path, bbox[0], bbox[1], bbox[2], bbox[3], conf, 
+                                  sharp, exp, json.dumps(lm), json.dumps(orient), emb_blob))
+                                  
+                # 3. incremental_cluster_update logic
+                conn.execute("DELETE FROM identity_faces WHERE file_path=?", (path,))
+                
+                cursor = conn.cursor()
+                cursor.execute("SELECT cluster_id, average_embedding FROM identity_clusters WHERE status='active'")
+                cluster_rows = cursor.fetchall()
+                
+                centroids = {}
+                for cid, emb_blob in cluster_rows:
+                    if emb_blob:
+                        centroids[cid] = np.frombuffer(emb_blob, dtype=np.float32)
+                        
+                for face in faces:
+                    femb = face.get("embedding")
+                    if not femb:
+                        continue
+                    femb_arr = np.array(femb, dtype=np.float32)
+                    
+                    best_cid = None
+                    best_sim = -1.0
+                    norm1 = np.linalg.norm(femb_arr)
+                    if norm1 > 0:
+                        for cid, cent in centroids.items():
+                            sim = float(np.dot(femb_arr, cent) / norm1)
+                            if sim > best_sim:
+                                best_sim = sim
+                                best_cid = cid
+                                
+                    if best_cid is not None and best_sim >= 0.75:
+                        assigned_cid = best_cid
+                        face["cluster_id"] = assigned_cid
+                        face["matching_score"] = best_sim
+                        face["identity_state"] = "stable"
+                        
+                        old_cent = centroids[assigned_cid]
+                        cursor.execute("SELECT face_count FROM cluster_statistics WHERE cluster_id=?", (assigned_cid,))
+                        row = cursor.fetchone()
+                        count = row[0] if row else 1
+                        
+                        new_cent = (old_cent * count + femb_arr) / (count + 1)
+                        norm = np.linalg.norm(new_cent)
+                        if norm > 0:
+                            new_cent /= norm
+                        centroids[assigned_cid] = new_cent
+                        
+                        new_emb_blob = new_cent.tobytes()
+                        conn.execute("""
+                            UPDATE identity_clusters 
+                            SET average_embedding=?, last_updated=? 
+                            WHERE cluster_id=?
+                        """, (new_emb_blob, time.time(), assigned_cid))
+                        
+                        conn.execute("""
+                            UPDATE cluster_statistics 
+                            SET face_count=face_count+1 
+                            WHERE cluster_id=?
+                        """, (assigned_cid,))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO identity_clusters 
+                            (average_embedding, confidence, creation_timestamp, last_updated)
+                            VALUES (?, ?, ?, ?)
+                        """, (femb_arr.tobytes(), face.get("confidence", 1.0), time.time(), time.time()))
+                        assigned_cid = cursor.lastrowid
+                        face["cluster_id"] = assigned_cid
+                        face["matching_score"] = 1.0
+                        face["identity_state"] = "new"
+                        
+                        centroids[assigned_cid] = femb_arr
+                        conn.execute("""
+                            INSERT INTO cluster_statistics (cluster_id, face_count)
+                            VALUES (?, 1)
+                        """, (assigned_cid,))
+                        
+                    # Save to identity_faces
+                    bbox = face.get("bbox", [0, 0, 0, 0])
+                    fconf = face.get("confidence", 1.0)
+                    q = face.get("quality", {})
+                    sharp = q.get("sharpness", 0.0)
+                    exp = q.get("exposure", 0.0)
+                    lm = face.get("landmarks", {})
+                    orient = face.get("orientation", {})
+                    femb_blob = femb_arr.tobytes()
+                    
+                    conn.execute("""
+                        INSERT INTO identity_faces
+                        (cluster_id, file_path, bbox_x, bbox_y, bbox_w, bbox_h, confidence,
+                         sharpness, exposure, landmarks, orientation, embedding)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (assigned_cid, path, bbox[0], bbox[1], bbox[2], bbox[3], fconf,
+                          sharp, exp, json.dumps(lm), json.dumps(orient), femb_blob))
+    except Exception as e:
+        print(f"[cache_engine] save_analysis_transaction error for {path}: {e}")

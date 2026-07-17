@@ -550,7 +550,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     
     # Write local crash.json for pilot crash reporting
     crash_data = {
-        "app_version": "1.2.1",
+        "app_version": "1.2.2",
         "error": str(exc_value),
         "stacktrace": err_msg,
         "machine_hash": get_machine_fingerprint(),
@@ -1283,7 +1283,7 @@ class WebviewApi:
             server_url = license_manager._get_db_value("server_url", "https://quantilecull.com/api")
             payload = {
                 "machine_id": get_machine_fingerprint(),
-                "app_version": "1.2.1",
+                "app_version": "1.2.2",
                 "error": error,
                 "stacktrace": stacktrace
             }
@@ -2016,7 +2016,7 @@ def check_and_create_lock():
                     # Focus existing window
                     if sys.platform == 'win32':
                         import ctypes
-                        hwnd = ctypes.windll.user32.FindWindowW(None, "QuantileCull — AI Quantile Culler")
+                        hwnd = ctypes.windll.user32.FindWindowW(None, "QuantileCull — Intelligent Photo Selection")
                         if hwnd:
                             ctypes.windll.user32.ShowWindow(hwnd, 9)
                             ctypes.windll.user32.SetForegroundWindow(hwnd)
@@ -2130,7 +2130,7 @@ if __name__ == '__main__':
         
     api = WebviewApi()
     window = webview.create_window(
-        "QuantileCull — AI Quantile Culler",
+        "QuantileCull — Intelligent Photo Selection",
         bottle_app,
         width=1280,
         height=800,
