@@ -435,11 +435,9 @@ def feature_request():
 
 @app.route('/static/<filepath:path>')
 def serve_static(filepath):
-    # Redirect any versioned installers (e.g. QuantileCull_1.2.1_Setup.exe, QuantileCull_1.2.2_Setup.exe) to the standardized latest setup
+    # Serve the standardized latest setup file directly for any legacy versioned request to avoid browser redirect blocks
     if filepath.startswith('QuantileCull_') and filepath.endswith('_Setup.exe') and filepath != 'QuantileCull_Setup.exe':
-        bottle.response.status = 301
-        bottle.response.set_header('Location', '/static/QuantileCull_Setup.exe')
-        return
+        return bottle.static_file('QuantileCull_Setup.exe', root=str(WORKSPACE_DIR / "static"), download=filepath)
     return bottle.static_file(filepath, root=str(WORKSPACE_DIR / "static"))
 
 @app.route('/latest-version', method=['GET'])
