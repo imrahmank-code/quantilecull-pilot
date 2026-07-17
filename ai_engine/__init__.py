@@ -64,26 +64,26 @@ def run_inference(model_name: str, input_feed: dict) -> dict:
             
     with _lock:
         session = model_manager.load_model(model_name, _models_dir, _active_provider)
-        if not session:
-            return {"error": f"Model session for {model_name} could not be loaded."}
-            
-        try:
-            if hasattr(session, "run"):
-                output_names = [out.name for out in session.get_outputs()]
-                raw_outputs = session.run(output_names, input_feed)
-                return {name: val for name, val in zip(output_names, raw_outputs)}
-            else:
-                import numpy as np
-                mock_out = {}
-                meta = model_manager.get_model_info(model_name)
-                if meta:
-                    if model_name == "face_embedder":
-                        mock_out["output"] = np.random.randn(1, 512).astype(np.float32)
-                    elif model_name == "eye_state":
-                        mock_out["output"] = np.array([[0.95, 0.05]], dtype=np.float32)
-                    else:
-                        mock_out["output"] = np.zeros((1, 1), dtype=np.float32)
-                return mock_out
-        except Exception as e:
-            sys.stderr.write(f"[ai_engine] Inference run failed on model {model_name}: {e}\n")
-            return {"error": str(e)}
+    if not session:
+        return {"error": f"Model session for {model_name} could not be loaded."}
+        
+    try:
+        if hasattr(session, "run"):
+            output_names = [out.name for out in session.get_outputs()]
+            raw_outputs = session.run(output_names, input_feed)
+            return {name: val for name, val in zip(output_names, raw_outputs)}
+        else:
+            import numpy as np
+            mock_out = {}
+            meta = model_manager.get_model_info(model_name)
+            if meta:
+                if model_name == "face_embedder":
+                    mock_out["output"] = np.random.randn(1, 512).astype(np.float32)
+                elif model_name == "eye_state":
+                    mock_out["output"] = np.array([[0.95, 0.05]], dtype=np.float32)
+                else:
+                    mock_out["output"] = np.zeros((1, 1), dtype=np.float32)
+            return mock_out
+    except Exception as e:
+        sys.stderr.write(f"[ai_engine] Inference run failed on model {model_name}: {e}\n")
+        return {"error": str(e)}

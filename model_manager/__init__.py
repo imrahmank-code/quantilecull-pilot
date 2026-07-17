@@ -81,6 +81,7 @@ def load_model(model_name: str, models_dir: str, provider: Optional[str] = None)
     meta = get_model_info(model_name)
     if not meta:
         sys.stderr.write(f"[model_manager] Model {model_name} is not registered.\n")
+        _model_session_cache[cache_key] = None
         return None
         
     model_file = None
@@ -92,6 +93,7 @@ def load_model(model_name: str, models_dir: str, provider: Optional[str] = None)
             
     if not model_file:
         sys.stderr.write(f"[model_manager] Model file for {model_name} not found in {models_dir}.\n")
+        _model_session_cache[cache_key] = None
         return None
         
     if model_file.endswith(".onnx"):

@@ -48,6 +48,7 @@ index.html
 brand/
 docs/
 tests/
-static/
+static/*
+!static/QuantileCull_Setup.exe
 scripts/run_production_exports.py
 AGY_WORKSPACE.json
