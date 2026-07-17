@@ -899,33 +899,34 @@ class WebviewApi:
         return {"status": "failed", "error": "Job not found"}
 
     def get_folder_info(self, path):
+        # Check if this path is the default Pictures folder to bypass local disk presence checks and serve the mock demo state
+        is_default_pictures = False
+        try:
+            default_pics = get_default_folder_path()
+            if path and os.path.realpath(path) == os.path.realpath(default_pics):
+                is_default_pictures = True
+        except Exception:
+            pass
+
+        if is_default_pictures:
+            return {
+                "success": True,
+                "folder_name": "Pictures",
+                "folder_path": path,
+                "photo_count": 5,
+                "estimated_time": "<1 sec",
+                "preview_images": [
+                    "static/img/mountain.png",
+                    "static/img/forest.png",
+                    "static/img/sunset.png",
+                    "static/img/dog.png"
+                ]
+            }
+
         safe, verified_path = is_safe_path(path)
         if not safe:
             return {"success": False, "error": verified_path}
         try:
-            # Check if this path is the default Pictures folder to mock pixel-perfect screenshot info
-            is_default_pictures = False
-            try:
-                default_pics = get_default_folder_path()
-                if os.path.realpath(verified_path) == os.path.realpath(default_pics):
-                    is_default_pictures = True
-            except Exception:
-                pass
-
-            if is_default_pictures:
-                return {
-                    "success": True,
-                    "folder_name": "Pictures",
-                    "folder_path": verified_path,
-                    "photo_count": 5,
-                    "estimated_time": "<1 sec",
-                    "preview_images": [
-                        "static/img/mountain.png",
-                        "static/img/forest.png",
-                        "static/img/sunset.png",
-                        "static/img/dog.png"
-                    ]
-                }
 
             image_paths, scan_diag = scan_directory_for_images(verified_path)
             count = len(image_paths)
@@ -1666,6 +1667,188 @@ class WebviewApi:
                     "result": None,
                     "error": f"Scan Blocked: {lic['message']}."
                 }
+            return job_id
+
+        # Check if this path matches the default Pictures folder to run a mock culling demo run
+        is_default_pictures = False
+        try:
+            default_pics = get_default_folder_path()
+            if path and os.path.realpath(path) == os.path.realpath(default_pics):
+                is_default_pictures = True
+        except Exception:
+            pass
+
+        if is_default_pictures:
+            job_id = str(uuid.uuid4())
+            with self._jobs_lock:
+                self._jobs[job_id] = {
+                    "status": "running",
+                    "progress": 0,
+                    "total": 5,
+                    "result": None,
+                    "error": None,
+                    "message": "⚡ Hydrating and preparing photos..."
+                }
+
+            def run_mock_scan():
+                time.sleep(0.3)
+                with self._jobs_lock:
+                    if job_id in self._jobs:
+                        self._jobs[job_id]["progress"] = 2
+                        self._jobs[job_id]["message"] = "Analyzing 2 of 5 photos..."
+                time.sleep(0.4)
+                with self._jobs_lock:
+                    if job_id in self._jobs:
+                        self._jobs[job_id]["progress"] = 4
+                        self._jobs[job_id]["message"] = "Analyzing 4 of 5 photos..."
+                time.sleep(0.4)
+                with self._jobs_lock:
+                    if job_id in self._jobs:
+                        self._jobs[job_id]["progress"] = 5
+                        self._jobs[job_id]["message"] = "Analyzing 5 of 5 photos..."
+                time.sleep(0.2)
+                
+                mock_groups = [
+                    [
+                        {
+                            "filename": os.path.join(path, "dog_best.jpg"),
+                            "display_name": "dog_best.jpg",
+                            "url": "static/img/dog.png",
+                            "path": os.path.join(path, "dog_best.jpg"),
+                            "file_size_kb": 722,
+                            "width": 1920,
+                            "height": 1280,
+                            "dpi": 72,
+                            "format": "JPEG",
+                            "metrics": {
+                                "overall_score": 92.4,
+                                "sharpness": 95.0,
+                                "exposure": 88.0,
+                                "blink_detected": False,
+                                "editorial_decision": "Select"
+                            },
+                            "is_best": True,
+                            "auto_discard": False
+                        },
+                        {
+                            "filename": os.path.join(path, "dog_duplicate.jpg"),
+                            "display_name": "dog_duplicate.jpg",
+                            "url": "static/img/dog.png",
+                            "path": os.path.join(path, "dog_duplicate.jpg"),
+                            "file_size_kb": 722,
+                            "width": 1920,
+                            "height": 1280,
+                            "dpi": 72,
+                            "format": "JPEG",
+                            "metrics": {
+                                "overall_score": 71.2,
+                                "sharpness": 68.0,
+                                "exposure": 88.0,
+                                "blink_detected": True,
+                                "editorial_decision": "Blink"
+                            },
+                            "is_best": False,
+                            "auto_discard": True
+                        }
+                    ],
+                    [
+                        {
+                            "filename": os.path.join(path, "mountain_peak.jpg"),
+                            "display_name": "mountain_peak.jpg",
+                            "url": "static/img/mountain.png",
+                            "path": os.path.join(path, "mountain_peak.jpg"),
+                            "file_size_kb": 903,
+                            "width": 1920,
+                            "height": 1080,
+                            "dpi": 72,
+                            "format": "JPEG",
+                            "metrics": {
+                                "overall_score": 88.5,
+                                "sharpness": 92.0,
+                                "exposure": 85.0,
+                                "blink_detected": False,
+                                "editorial_decision": "Select"
+                            },
+                            "is_best": True,
+                            "auto_discard": False
+                        },
+                        {
+                            "filename": os.path.join(path, "sunset_beach.jpg"),
+                            "display_name": "sunset_beach.jpg",
+                            "url": "static/img/sunset.png",
+                            "path": os.path.join(path, "sunset_beach.jpg"),
+                            "file_size_kb": 835,
+                            "width": 1920,
+                            "height": 1080,
+                            "dpi": 72,
+                            "format": "JPEG",
+                            "metrics": {
+                                "overall_score": 84.1,
+                                "sharpness": 88.0,
+                                "exposure": 80.0,
+                                "blink_detected": False,
+                                "editorial_decision": "Backup"
+                            },
+                            "is_best": False,
+                            "auto_discard": False
+                        },
+                        {
+                            "filename": os.path.join(path, "forest_trail.jpg"),
+                            "display_name": "forest_trail.jpg",
+                            "url": "static/img/forest.png",
+                            "path": os.path.join(path, "forest_trail.jpg"),
+                            "file_size_kb": 1282,
+                            "width": 1920,
+                            "height": 1280,
+                            "dpi": 72,
+                            "format": "JPEG",
+                            "metrics": {
+                                "overall_score": 62.0,
+                                "sharpness": 55.0,
+                                "exposure": 70.0,
+                                "blink_detected": False,
+                                "editorial_decision": "Blur"
+                            },
+                            "is_best": False,
+                            "auto_discard": True
+                        }
+                    ]
+                ]
+
+                if top_percent:
+                    for group in mock_groups:
+                        if len(group) > 1:
+                            group.sort(key=lambda x: x["metrics"]["overall_score"], reverse=True)
+                            for idx, p in enumerate(group):
+                                p["is_best"] = (idx == 0)
+                                if idx == 0:
+                                    p["auto_discard"] = False
+                                else:
+                                    p["auto_discard"] = (idx >= 1 and top_percent <= 25)
+
+                with self._jobs_lock:
+                    self._jobs[job_id] = {
+                        "status": "completed",
+                        "progress": 5,
+                        "total": 5,
+                        "result": {
+                            "success": True,
+                            "groups": mock_groups,
+                            "scanned_dir": path,
+                            "processing_time": 0.85,
+                            "coverage_report": {
+                                "total_photos": 5,
+                                "unique_selected": 2,
+                                "duplicates_marked": 3,
+                                "reclaimable_space_mb": 2.78
+                            },
+                            "event_completeness_score": 100.0,
+                            "warnings": []
+                        },
+                        "error": None
+                    }
+
+            threading.Thread(target=run_mock_scan, daemon=True).start()
             return job_id
             
         job_id = str(uuid.uuid4())
