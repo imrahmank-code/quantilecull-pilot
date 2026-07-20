@@ -205,13 +205,13 @@ def activate():
         
     try:
         data = bottle.request.json or {}
-        license_key = data.get("license_key", "").strip().upper()
-        machine_id = data.get("machine_id", "").strip()
-        name = data.get("name", "").strip()
-        email = data.get("email", "").strip()
-        company = data.get("company", "").strip()
-        country = data.get("country", "").strip()
-        photography_type = data.get("photography_type", "").strip()
+        license_key = (data.get("license_key") or "").strip().upper()
+        machine_id = (data.get("machine_id") or "").strip()
+        name = (data.get("name") or "").strip()
+        email = (data.get("email") or "").strip()
+        company = (data.get("company") or "").strip()
+        country = (data.get("country") or "").strip()
+        photography_type = (data.get("photography_type") or "").strip()
         
         if not license_key or not machine_id:
             bottle.response.status = 400
