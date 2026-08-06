@@ -2808,7 +2808,7 @@ function setupLicensingUI() {
             const company = companyInput ? companyInput.value.trim() : '';
             const country = countryInput ? countryInput.value.trim() : '';
             const photographyType = typeSelect ? typeSelect.value : 'Corporate';
-            const serverUrl = serverInput ? serverInput.value.trim() : 'https://quantilecull-pilot.onrender.com';
+            const serverUrl = serverInput ? serverInput.value.trim() : 'https://quantilecull.com/api';
             
             if (!licenseKey || !name || !email) {
                 alert('Please enter Name, Email, and License Key.');
@@ -2862,7 +2862,7 @@ function setupLicensingUI() {
             const company = companyInput ? companyInput.value.trim() : '';
             const country = countryInput ? countryInput.value.trim() : '';
             const photographyType = typeSelect ? typeSelect.value : 'Corporate';
-            const serverUrl = serverInput ? serverInput.value.trim() : 'https://quantilecull-pilot.onrender.com';
+            const serverUrl = serverInput ? serverInput.value.trim() : 'https://quantilecull.com/api';
             
             if (!licenseKey) {
                 alert('Please enter a license key.');
