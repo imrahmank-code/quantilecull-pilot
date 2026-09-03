@@ -51,8 +51,8 @@ QuantileCull offers dual culling metrics:
 - **Solution**: Click **More Info** on the SmartScreen dialog, then click **Run Anyway**.
 
 ### Expiry Bar Warning
-- **Issue**: A top warning bar displays: `"Trial Ended. Contact QuantileCull for an Extended Evaluation License."`
-- **Explanation**: Your 30-day evaluation token has expired. The application has entered **Read-Only Mode**. You can still browse folders, view grids, and inspect historical culling scores. Running new scans or exporting photos is blocked until you click **Renew License** and input a fresh token.
+- **Issue**: A top header bar displays: `"Evaluation Period Ended — Keep your local offline AI processing speed permanent."`
+- **Explanation**: Your evaluation token has expired. You can continue with unlimited local AI culling by clicking **★ Unlock Lifetime Access ($59)** or entering your purchased license key under **Enter Key**.
 
 ### Clock rollback detected warning
 - **Issue**: A red warning bar blocks the UI with `"License Verification Failed (System Clock Rollback Detected)"`.

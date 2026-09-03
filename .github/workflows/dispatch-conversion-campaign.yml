@@ -1,0 +1,24 @@
+﻿name: Dispatch 48-Hour Conversion Campaign
+
+on:
+  workflow_dispatch: # Allows 1-click execution from GitHub Actions UI
+
+jobs:
+  dispatch-emails:
+    name: Dispatch 48H Trial Expiry Emails
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Dispatch 48-Hour Conversion Campaign
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/dispatch_48h_conversion.js

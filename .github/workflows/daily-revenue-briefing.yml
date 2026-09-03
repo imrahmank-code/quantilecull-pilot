@@ -1,0 +1,35 @@
+﻿name: 24/7 Daily Revenue & Commercial Briefing
+
+on:
+  schedule:
+    - cron: '30 3 * * *' # Exactly 09:00 AM IST (03:30 UTC) daily
+  workflow_dispatch:      # Allows manual 1-click on-demand execution anytime
+
+jobs:
+  dispatch-briefing:
+    name: Dispatch Daily Commercial Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Execute Daily Cloud Briefing
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_REPORT_EMAIL: ${{ secrets.ADMIN_REPORT_EMAIL || 'quantilecull.support@gmail.com' }}
+          FOUNDER_EMAIL: ${{ secrets.FOUNDER_EMAIL || 'imrahman.k@gmail.com' }}
+          OFFICIAL_SENDER_EMAIL: ${{ secrets.OFFICIAL_SENDER_EMAIL || 'QuantileCull Executive <support@quantilecull.com>' }}
+        run: node scripts/dispatch_cloud_briefing.js

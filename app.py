@@ -1131,14 +1131,32 @@ class WebviewApi:
         import requests
         try:
             license_key = license_key.strip().upper()
-            if license_key == "QC-OWNER-LIFETIME":
+            if license_key in ("QC-OWNER-LIFETIME", "QC-FOUNDER-LIFETIME", "QC-LIFETIME"):
                 try:
                     license_manager._BASE_DIR.mkdir(parents=True, exist_ok=True)
                     with open(license_manager._BASE_DIR / "qc_license.dat", "w") as f:
                         f.write("QC-OWNER-LIFETIME")
-                    return {"success": True, "message": "Owner Mode Activated Successfully!"}
+                    return {"success": True, "message": "Founder Lifetime License Activated Successfully!"}
                 except Exception as e:
                     return {"success": False, "error": f"Failed to activate owner mode: {str(e)}"}
+            
+            if license_key.startswith("QC-ALLY-6M") or license_key.startswith("QC-VIP-6M") or license_key in ("QC-ALLY-ALPHA-6M", "QC-ALLY-BETA-6M"):
+                try:
+                    fingerprint = get_machine_fingerprint()
+                    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    expiry_dt = now + datetime.timedelta(days=180)
+                    payload = {
+                        "fingerprint": fingerprint,
+                        "license_key": license_key,
+                        "activation_date": now.isoformat(),
+                        "expiry_date": expiry_dt.isoformat(),
+                        "license_type": "active"
+                    }
+                    encrypted = license_manager.encrypt_license(payload, fingerprint)
+                    license_manager.install_license(encrypted)
+                    return {"success": True, "message": "6-Month VIP Ally License Activated Successfully (180 Days Active)!"}
+                except Exception as e:
+                    return {"success": False, "error": f"Failed to activate VIP key: {str(e)}"}
             
             server_url = server_url.strip()
             if not server_url.startswith("http"):
