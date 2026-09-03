@@ -1,4 +1,4 @@
-﻿name: Dispatch 48-Hour Conversion Campaign
+name: Dispatch 48-Hour Conversion Campaign
 
 on:
   workflow_dispatch: # Allows 1-click execution from GitHub Actions UI
@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Dispatch 48-Hour Conversion Campaign
         env:
