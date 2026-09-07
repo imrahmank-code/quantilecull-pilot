@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const fs = require('fs');
+const path = require('path');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 // Helper to load env vars from .env files if process.env is empty
@@ -13,12 +8,15 @@ function loadEnvFile(filePath) {
   if (fs.existsSync(filePath)) {
     const content = fs.readFileSync(filePath, 'utf-8');
     content.split('\n').forEach(line => {
-      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-      if (match) {
-        const key = match[1];
-        let value = match[2] || '';
-        if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-        if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.substring(0, idx).trim();
+        let value = trimmed.substring(idx + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
         if (!process.env[key]) {
           process.env[key] = value.trim();
         }
@@ -38,12 +36,54 @@ const adminEmail = process.env.ADMIN_REPORT_EMAIL || 'quantilecull.support@gmail
 const founderEmail = process.env.FOUNDER_EMAIL || 'imrahman.k@gmail.com';
 const senderEmail = process.env.OFFICIAL_SENDER_EMAIL || 'QuantileCull Executive <support@quantilecull.com>';
 
+async function fetchSupabase(endpoint) {
+  if (!supabaseUrl || !supabaseKey) return null;
+  const baseUrl = supabaseUrl.replace(/\/+$/, '');
+  const url = `${baseUrl}/rest/v1/${endpoint}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Supabase PostgREST error (${response.status}): ${errorText}`);
+  }
+  return await response.json();
+}
+
+async function sendResendEmail({ from, to, subject, html }) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html
+    })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`Resend API error (${response.status}): ${JSON.stringify(data)}`);
+  }
+  return data;
+}
+
 async function run() {
-  const dateStr = new Date().toISOString().split('T')[0];
+  // Authoritative date string in Asia/Kolkata (IST)
+  const dateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   console.log(`[CloudBriefing] Starting 24/7 Cloud Revenue Dispatch for ${dateStr}...`);
 
   if (!resendApiKey) {
-    throw new Error('Missing RESEND_API_KEY');
+    console.error('❌ Fatal: RESEND_API_KEY is missing from environment/secrets.');
+    process.exit(1);
   }
 
   let totalPurchases = 0;
@@ -54,25 +94,19 @@ async function run() {
 
   if (supabaseUrl && supabaseKey) {
     try {
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('status', 'paid');
-      
+      const payments = await fetchSupabase('payments?status=eq.paid&select=*');
       if (payments && Array.isArray(payments)) {
         totalPurchases = payments.length;
         totalRevenueUsd = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
       }
 
-      const { data: licenses } = await supabase.from('licenses').select('*');
+      const licenses = await fetchSupabase('licenses?select=*');
       if (licenses && Array.isArray(licenses)) {
         totalLicenses = licenses.length;
         activeTrials = licenses.filter(l => l.state === 'TRIAL' || l.state === 'ACTIVE').length;
       }
 
-      const { data: activations } = await supabase.from('activations').select('*');
+      const activations = await fetchSupabase('activations?select=*');
       if (activations && Array.isArray(activations)) {
         totalActivations = activations.length;
       }
@@ -148,15 +182,14 @@ async function run() {
 </html>
   `;
 
-  const resend = new Resend(resendApiKey);
-  const result = await resend.emails.send({
+  const result = await sendResendEmail({
     from: senderEmail,
     to: [adminEmail, founderEmail],
     subject: `[QuantileCull Cloud] Daily Commercial Briefing — ${dateStr} ($${totalRevenueUsd.toFixed(2)} Revenue)`,
     html: htmlContent
   });
 
-  console.log(`[CloudBriefing] Email successfully dispatched via Resend! ID: ${result.data?.id || result.id}`);
+  console.log(`[CloudBriefing] Email successfully dispatched via Resend! ID: ${result?.id || 'OK'}`);
   return result;
 }
 
