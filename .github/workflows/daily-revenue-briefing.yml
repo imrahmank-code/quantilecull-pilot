@@ -2,25 +2,29 @@ name: 24/7 Daily Revenue & Commercial Briefing
 
 on:
   schedule:
-    - cron: '30 3 * * *' # Exactly 09:00 AM IST (03:30 UTC) daily
-  workflow_dispatch:      # Allows manual 1-click on-demand execution anytime
+    - cron: '30 3 * * *' # Exactly 09:00:00 AM IST (03:30 UTC) 365 days/year
+  workflow_dispatch:      # On-demand operator bypass
+
+concurrency:
+  group: daily-executive-briefing
+  cancel-in-progress: false
 
 jobs:
   dispatch-briefing:
-    name: Dispatch Daily Commercial Report
+    name: Execute Ground-Truth Briefing
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Codebase
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Initialize Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Execute Daily Cloud Briefing
+      - name: Execute Resilient Dispatch Engine
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
