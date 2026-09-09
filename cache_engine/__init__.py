@@ -12,14 +12,33 @@ DB_FILE = ".quantilecull_cache.db"
 _thread_local = threading.local()
 
 def _get_db_connection():
-    if not hasattr(_thread_local, "conn"):
+    needs_reconnect = (
+        not hasattr(_thread_local, "conn")
+        or _thread_local.conn is None
+        or getattr(_thread_local, "db_file", None) != DB_FILE
+    )
+    if not needs_reconnect:
+        try:
+            _thread_local.conn.execute("SELECT 1")
+        except (sqlite3.ProgrammingError, sqlite3.OperationalError):
+            needs_reconnect = True
+
+    if needs_reconnect:
+        if hasattr(_thread_local, "conn") and _thread_local.conn is not None:
+            try:
+                _thread_local.conn.close()
+            except Exception:
+                pass
         conn = sqlite3.connect(DB_FILE, timeout=15.0)
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute("PRAGMA cache_size=-4000;")
         conn.execute("PRAGMA temp_store=MEMORY;")
         _thread_local.conn = conn
+        _thread_local.db_file = DB_FILE
     return _thread_local.conn
+
+
 
 def _init_cache():
     try:
