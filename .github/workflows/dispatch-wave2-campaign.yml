@@ -1,0 +1,24 @@
+name: Dispatch Wave 2 Reverse Culling Challenge
+
+on:
+  workflow_dispatch: # Allows manual on-demand execution
+
+jobs:
+  dispatch-wave2:
+    name: Dispatch Reverse Culling Challenge to 25 Studios
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Execute Wave 2 Dispatch
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/dispatch_wave2_challenge.js
