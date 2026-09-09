@@ -199,3 +199,18 @@ def _create_fresh_xmp():
     
     tree = ET.ElementTree(xmpmeta)
     return xmpmeta, desc, tree
+
+# Backward compatible re-exports for Pillar 3 EnhancedXmpEngine
+try:
+    from enhanced_xmp_engine import (
+        EnhancedXmpEngine,
+        XmpExportProfile,
+        CullDecision,
+        LIGHTROOM_PROFILE,
+        CAPTURE_ONE_PROFILE,
+        PHOTO_MECHANIC_PROFILE,
+        UNIVERSAL_PROFILE
+    )
+except ImportError:
+    pass
+
